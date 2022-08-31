@@ -1,0 +1,101 @@
+---
+title: "Week2"
+author: "Meng Ye"
+date: "2022-08-31"
+output: html_document
+---
+
+```{r load packages, message=FALSE, warning=FALSE}
+#Bayes rules Chapter 2
+library(bayesrules)
+library(tidyverse)
+library(janitor)
+#Bayes rules
+
+```
+
+# Bayes Rules Chapter 2
+
+## Follow along Bayes Rules Chapter 2
+
+### Intro
+
+```{r}
+# Import article data
+data(fake_news)
+```
+
+ps: data takes some to load...
+
+
+```{r}
+fake_news %>% 
+  tabyl(type) %>% 
+  adorn_totals("row")
+```
+
+ps: get to know a new way to derive the "pretend" row of summed up data, but maybe compared with our earlier `add_row()` approach, the types of calculation for the summed up row might be limited to only `sum()`.
+
+```{r}
+# Tabulate exclamation usage and article type
+fake_news %>% 
+  tabyl(title_has_excl, type) %>% 
+  adorn_totals("row")
+```
+
+
+
+### 2.1 Building a Beyesian model for the events 
+
+
+## Questions for the chapter
+
+## Practices for Beyes Rules Chapter 2
+
+
+# Bayes Rules Chapter 3
+
+## Follow along Bayes Rules Chapter 3
+
+## Questions for the chapter
+
+## Practices for Beyes Rules Chapter 3
+
+
+
+
+
+
+# Stats Rethinking Chapter 2
+
+## Follow along Bayes Rules Chapter 2
+
+## Questions for the chapter
+
+## Practices for Beyes Rules Chapter 2
+
+
+
+
+
+
+# Stats Rethinking Chapter 3
+
+## Follow along Bayes Rules Chapter 3
+
+## Questions for the chapter
+
+## Practices for Beyes Rules Chapter 3
+
+
+
+
+
+
+
+
+
+
+
+
+

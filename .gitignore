@@ -2,3 +2,10 @@
 .Rhistory
 .RData
 .Ruserdata
+
+# R Markdown stuff
+**/*_files/*
+**/*_cache/*
+**/*.html
+**/*.pdf
+
