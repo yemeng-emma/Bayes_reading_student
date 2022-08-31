@@ -1,4 +1,4 @@
-# Beyes_reading_student
+# Bayes_reading_student
 Directed reading course with Dr. Andreww Heiss
 
 The project compiles codes for the Beyesian Directed Reading course with Dr. Andreww Heiss at Georgia State University 
