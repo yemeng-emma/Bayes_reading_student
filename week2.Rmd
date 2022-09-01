@@ -255,7 +255,7 @@ ggplot(win_one, aes(x = pi)) +
 
 ### Excercise 2.2 
 
-Save for later. Maybe we go through it together?
+We went through it together today. 
 
 ### Excercise 2.4
 
@@ -271,7 +271,6 @@ $$
 ```
 
 
-ps: How do I start a new line without having to type so much "$"
 
 ### Excercise 2.14 
 
@@ -368,16 +367,15 @@ Q: what we quickly go through the meaning of kernel, certainly it is a general c
 
 - general form
 
-$$ Y| \sim Bin (n, \pi)
-$$
-$$\pi \sim Beta(\alpha, beta)
-$$
+$$ Y| \sim Bin (n, \pi)$$
+
+$$\pi \sim Beta(\alpha, beta)$$
 
 - posterior of pi
 
 
-$$ \pi| (Y = y) \sim Beta (\alpha + y, \beta + n-y)
-$$ 
+$$ \pi| (Y = y) \sim Beta (\alpha + y, \beta + n-y)$$
+
 
 
 
@@ -393,6 +391,9 @@ ggplot(michelle_sim, aes(x = pi, y = y)) +
   geom_point(aes(color = (y == 30)), size = 0.1)
 ```
 
+
+
+
 ```{r}
 # Keep only the simulated pairs that match our data
 michelle_posterior <- michelle_sim %>% 
@@ -407,7 +408,6 @@ ggplot(michelle_posterior, aes(x = pi)) +
 ```{r}
 michelle_posterior %>% 
   summarize(mean(pi), sd(pi))
-  mean(pi)  sd(pi)
 ```
 
 
