@@ -6,7 +6,6 @@ output: html_document
 ---
 
 ```{r load packages, message=FALSE, warning=FALSE}
-#Bayes rules Chapter 2
 library(bayesrules)
 library(tidyverse)
 library(janitor)
@@ -292,7 +291,137 @@ to do later
 
 ## Follow along Bayes Rules Chapter 3
 
+### Intro
+
+- Beta-Binomial Bayesian model
+
+a continuous prior probability model of $\pi$, provides us the tools we need to study the proportion of interest,
+
+### 3.1 Beta prior model 
+
+- pdf ~ pmf for discrete variables and integrates to 1, probability is the area
+
+- A hyperparameter is a parameter used in a prior model
+
+- Question for Equation 3.1, what is the "y" in the part $e^{-y}$
+
+_ And just need a little explanation on the "argmax" notation 
+
+- What scenarios generally have a $\pi$ distribution of the Beta model? 
+
+- Tuning the Beta prior 
+
+ps. meaning what is our best guess of alpha and beta given what we know in the piror data?
+
+how to tune:
+
+1) find the mean/expectation = 0.45
+
+and make sure $E(\pi) = \alpha/(\alpha + \beta) \sim 0.45$ holds 
+
+ps. that gives us the ratio between the two parameters, are there other clues for these two should sum up?
+
+```{r}
+# Plot the Beta(45, 55) prior
+plot_beta(45, 55)
+```
+
+
+### 3.2 The Binomial data model and likelihood function 
+
+ps. that is the second element of the Bayesian Rules
+
+- turning the head
+
+  The likelihood function is knowing the result y = 30 as the constant and is a function of the prob $\pi$ 
+  
+- maximization 
+
+  Author didn't explain how they found that pi = 0.6 maximize the likelihood function. But I know R can do it for us. And this really resembles *MLE*!
+  
+  
+## 3.3 Beta posterior model 
+
+The third/last element of the Bayes Rules and it is what we try to find the answer for. And it is a model of which variable? $\pi$!
+How we re-estimate the prob distribution of some events after we update our knowledge about new data.
+
+The ONGO data, the ROs get registered before the law and after law, OR registered in Year 1 and Year 2 and Year 3?
+
+```{r}
+plot_beta_binomial(alpha = 45, beta = 55, y = 30, n = 50)
+```
+
+ps: neat plot! really intuitive to help you get the rationale
+
+
+```{r}
+summarize_beta_binomial(alpha = 45, beta = 55, y = 30, n = 50)
+```
+
+- How the posterior is built?
+
+Function 3.8 is genius! And that's all we need to build the posterior as the case in the chunk above, alpha, beta, y and n. 
+
+Q: what we quickly go through the meaning of kernel, certainly it is a general concept. We saw it in RD. But what it means exactly? 
+
+### 3.4 Beta-Benomial model
+
+- general form
+
+$$ Y| \sim Bin (n, \pi)
+$$
+$$\pi \sim Beta(\alpha, beta)
+$$
+
+- posterior of pi
+
+
+$$ \pi| (Y = y) \sim Beta (\alpha + y, \beta + n-y)
+$$ 
+
+
+
+
+### 3.5 Simulation 
+
+```{r}
+set.seed(84735)
+michelle_sim <- data.frame(pi = rbeta(10000, 45, 55)) %>% 
+  mutate(y = rbinom(10000, size = 50, prob = pi))
+
+ggplot(michelle_sim, aes(x = pi, y = y)) + 
+  geom_point(aes(color = (y == 30)), size = 0.1)
+```
+
+```{r}
+# Keep only the simulated pairs that match our data
+michelle_posterior <- michelle_sim %>% 
+  filter(y == 30)
+
+# Plot the remaining pi values
+ggplot(michelle_posterior, aes(x = pi)) + 
+  geom_density()
+```
+
+
+```{r}
+michelle_posterior %>% 
+  summarize(mean(pi), sd(pi))
+  mean(pi)  sd(pi)
+```
+
+
+```{r}
+nrow(michelle_posterior)
+```
+
+
 ## Questions for the chapter
+
+1. In what circumstances do we model pi with the Beta probability model?
+
+2. Why define the likelihood function? The conditional prob is more intuitive to me.
+
 
 
 ## Practices for Beyes Rules Chapter 3
