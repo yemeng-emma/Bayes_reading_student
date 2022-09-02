@@ -255,7 +255,7 @@ ggplot(win_one, aes(x = pi)) +
 
 ### Excercise 2.2 
 
-We went through it together today. 
+We went through it together today (9/1). 
 
 ### Excercise 2.4
 
@@ -272,19 +272,153 @@ $$
 
 
 
-### Excercise 2.14 
+### Excercise 2.13 
 
-to do later
-
-### Excercise 2.20
-
-to do later
+I know how to calculate but don't know how to guess before doing the calculation?
 
 ```{r}
+# creating the data frame borrow the data.frame() function in the text book  
+intolerant <- data.frame(pi_value = c(0.4, 0.5, 0.6, 0.7)) %>% 
+  bind_cols(pi_prior = c(0.1, 0.2, 0.44, 0.26)) %>% 
+  mutate(likelihood = choose(80,47) * pi_value^47 * (1 - pi_value)^(80-47)) %>%
+  mutate(updating_product = pi_prior * likelihood) %>% 
+  mutate(normalizating = sum(updating_product)) %>% 
+  mutate(pi_posterior = updating_product/normalizating)
 
+intolerant$pi_posterior
+```
+
+### Excercise 2.14 
+
+
+```{r}
+# creating the data frame borrow the data.frame() function in the text book  
+latebus <- data.frame(pi_value = c(0.15, 0.25, 0.5, 0.75, 0.85)) %>% 
+  bind_cols(pi_prior = c(3, 3, 8, 3, 3)/20) %>% 
+  mutate(likelihood = choose(13, 3) * pi_value^3 * (1 - pi_value)^(13 - 3)) %>%
+  mutate(updating_product = pi_prior * likelihood) %>%
+  mutate(normalizating = sum(updating_product)) %>% 
+  mutate(pi_posterior = updating_product/normalizating)
+
+latebus$pi_posterior
+```
+
+The probability to be late seems to be smaller than what people think. 
+
+
+### Excercise 2.18
+
+Repeat Exercise 2.13 we did earlier. 
+
+```{r}
+set.seed(5431)
+# possible values or sample space?
+intolerant_value <- data.frame(pi_value = c(0.4, 0.5, 0.6, 0.7))
+
+# define the prior model 
+intol_pi_prior = c(0.1, 0.2, 0.44, 0.26)
+
+# Simulation of 10000 pi from the prior 
+intol_sim <- sample_n(intolerant_value, size = 10000, weight = intol_pi_prior, replace = TRUE)
+
+# generate simulated outcome based on the above parameters
+intol_sim <- intol_sim %>% 
+  mutate(outcome = rbinom(10000, size = 80, prob = pi_value))
+
+# check the simulated data
+intol_sim %>% 
+  tabyl(pi_value) %>% 
+  adorn_totals("row")
+```
+
+```{r}
+# check the prob distribution for outcome == 47
+intol_sim %>% 
+  filter(outcome == 47) %>% 
+  tabyl(pi_value) %>% 
+  adorn_totals()
 ```
 
 
+```{r}
+# compare
+intolerant$pi_posterior
+```
+Roughly the same
+
+
+### Excercise 2.20
+
+I am not totally certain if I get this one right. 
+
+```{r}
+set.seed(5431)
+# possible values or sample space?
+cats_value <- data.frame(pi_value = c(1, 0))
+
+# define the prior model 
+cats_pi_prior = c(0.08, 0.92)
+
+# Simulation of 10000 pi from the prior 
+cats_sim <- sample_n(cats_value, size = 10000, weight = cats_pi_prior, replace = TRUE) %>% 
+  mutate(index = 1:n())
+
+# check distribution
+mean(cats_sim$pi_value)
+```
+
+the "pi_value" is not actually proportions, but I am keeping the name to remind me structurally which element it corresponds to in other models. 
+
+```{r}
+# generate simulated data for false positive
+cats_correct_fp <- cats_sim %>% 
+  filter(pi_value == 1) %>% 
+  sample_n(size = n() * (1-0.8), replace = FALSE) %>% 
+  mutate(pi_true_value = 0)
+# check generated data
+nrow(cats_correct_fp)
+```
+
+```{r}
+# generate simulated data for false negative
+cats_correct_fn <- cats_sim %>% 
+  filter(pi_value == 0) %>% 
+  sample_n(size = n() * 0.5, replace = FALSE) %>% 
+  mutate(pi_true_value = 1)
+
+# check generated data
+nrow(cats_correct_fn)
+```
+
+
+```{r}
+# combine the wrongfully identified sub data sets
+cats_correct <- bind_rows(cats_correct_fn, cats_correct_fp)
+
+# check if it is correct
+cats_correct %>% 
+  mutate(summ = pi_value + pi_true_value) %>% 
+  pull(summ) %>% 
+  sd()
+```
+
+
+```{r}
+# combine the identified results and the true results
+cats_correct_merge <- cats_correct %>% 
+  select(- pi_value)
+
+cats_sim_updated <- cats_sim %>% 
+  left_join(cats_correct_merge, by = "index") %>% 
+  mutate(pi_true_value = ifelse(is.na(pi_true_value), pi_value, pi_true_value))
+```
+
+$$ P(pi-true-value =1|pi-value =1) = \frac{P(pi-true-value=1 \cap pi -value =1)}{P(pi-value =1)}$$
+```{r}
+nrow(filter(cats_sim_updated, pi_value == 1 & pi_true_value ==1))/nrow(filter(cats_sim_updated, pi_true_value ==1))
+```
+
+Am I supposed to do this calculation since I am simulating...?
 
 # Bayes Rules Chapter 3
 
