@@ -560,6 +560,52 @@ nrow(michelle_posterior)
 
 ## Practices for Beyes Rules Chapter 3
 
+In the practices for this chapter, I intend to try as *few* commands as possible in the {bayesrules} package possible. Not sure if it is necessary?
+
+### Excercise 3.1
+
+- a. result of tuning several times 
+
+
+```{r}
+ggplot() +
+  geom_function(fun = ~dbeta(.x, shape1 = 20, shape2 = 30))
+
+```
+- b. $\mu = 0.8$ --> a:b = 0.8: (1-0.8) a = 4b
+plug in the equation of var of the distribution:
+
+$$\frac{ab}{(a+b)^2(a+b+1)}= \frac{4b^2}{(5b)^2(5b+1)}= 0.05$$
+$$4/25 = 0.05 * (5b +1)$$
+```{r}
+(4/25/0.05-1)/5
+```
+
+b = 0.44, a = 1.32
+
+
+```{r}
+ggplot() +
+  geom_function(fun = ~dbeta(.x, shape1 = 0.44, shape2 = 1.32))
+```
+Can a, b < 1
+
+```{r}
+# still think b = 3 looks good
+ggplot() +
+  geom_function(fun = ~dbeta(.x, shape1 = 12, shape2 = 3))
+```
+-c.
+
+```{r}
+ggplot() +
+  geom_function(fun = ~dbeta(.x, shape1 = 90, shape2 =10))
+
+```
+
+### Excercise 3.9
+
+### Excercise 3.10
 
 
 
