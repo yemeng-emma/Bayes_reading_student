@@ -1,0 +1,47 @@
+---
+title: "Week2"
+author: "Meng Ye"
+date: "2022-08-31"
+output: html_document
+---
+
+```{r load packages, message=FALSE, warning=FALSE}
+library(bayesrules)
+library(tidyverse)
+library(janitor)
+```
+
+
+# Stats Rethinking Chapter 2
+
+## Follow along Bayes Rules Chapter 2
+
+## Questions for the chapter
+
+## Practices for Beyes Rules Chapter 2
+
+
+
+
+
+
+# Stats Rethinking Chapter 3
+
+## Follow along Bayes Rules Chapter 3
+
+## Questions for the chapter
+
+## Practices for Beyes Rules Chapter 3
+
+
+
+
+
+
+
+
+
+
+
+
+

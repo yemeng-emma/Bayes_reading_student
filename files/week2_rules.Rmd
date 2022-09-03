@@ -586,9 +586,8 @@ b = 0.44, a = 1.32
 
 ```{r}
 ggplot() +
-  geom_function(fun = ~dbeta(.x, shape1 = 0.44, shape2 = 1.32))
+  geom_function(fun = ~dbeta(.x, shape1 = 1.32, shape2 = 0.44))
 ```
-Can a, b < 1
 
 ```{r}
 # still think b = 3 looks good
@@ -603,39 +602,167 @@ ggplot() +
 
 ```
 
+-d. I think it should look like this? Dense at the two ends.
+
+```{r}
+ggplot() +
+  geom_function(fun = ~dbeta(.x, shape1 = 1/2, shape2 =1/2))
+
+```
+
+
 ### Excercise 3.9
+
+- a. a= 8, b =2 | a = 1, b = 20
+
+```{r}
+# mean
+8/(8+2)
+1/(1+20)
+```
+
+
+$$\frac{ab}{(a+b)^2(a+b+1)}$$
+
+```{r}
+# variance
+16/(100*11)
+20/(21^2*22)
+```
+
+
+```{r}
+```
+
+- b.
+
+```{r}
+ggplot() +
+  geom_function(fun = ~dbeta(.x, shape1 = 8, shape2 =2))
+
+```
+
+```{r}
+ggplot() +
+  geom_function(fun = ~dbeta(.x, shape1 = 1, shape2 =20))
+
+```
+
+- c.
+North Dakota people' probability of using "pop" is high, around 0.8, there is some variation to this proportion but not big
+
+Louisiana people have a very very low proportion of folks who say "pop", and the variance is even smaller. 
+
+
 
 ### Excercise 3.10
 
+-a. calculate the posterior using the equation for  posterior of pi
 
 
-# Stats Rethinking Chapter 2
+$$ \pi| (Y = y) \sim Beta (\alpha + y, \beta + n-y)$$
+```{r}
+# for person 1
+ggplot() +
+  geom_function(fun = ~dbeta(.x, shape1 = 8 + 12, shape2 = 2 + 50 - 12))
 
-## Follow along Bayes Rules Chapter 2
+```
+```{r}
+# for person 2
+ggplot() +
+  geom_function(fun = ~dbeta(.x, shape1 = 1 + 12, shape2 = 20 + 50 - 12))
 
-## Questions for the chapter
-
-## Practices for Beyes Rules Chapter 2
-
-
-
-
+```
 
 
-# Stats Rethinking Chapter 3
-
-## Follow along Bayes Rules Chapter 3
-
-## Questions for the chapter
-
-## Practices for Beyes Rules Chapter 3
+- This is a simulated way that *DID NOT* work. Give more thought, I think the simulated data is in essense discrete, and it is impossible to calculate the probability at a particular value of "pi". So it does not work? 
 
 
 
+```{r}
+# model for Person 1
+set.seed(5431)
+
+pop_area1 <- tibble(prior = rbeta (1000, shape1 = 8, shape2 = 2)) %>% 
+  mutate(likelihood = choose(50, 12) * prior^12 * (1-prior)^(50-12)) %>% 
+# applying Equation 3.12, omitting the Gamma function as some constant that can be normalized later
+# BUT SEEM TO BE WRONG - the y value of a continuous pdf is not the probability!  
+  mutate(unnormalized = prior^(8-1) * (1 - prior)^(2-1) * likelihood) %>% 
+  mutate(normalizing_constant = sum(unnormalized)) %>% 
+  mutate(posterior = unnormalized / normalizing_constant)
 
 
+ggplot(pop_area1, aes(x = posterior)) +
+  geom_density()
+
+```
 
 
+b. plotting
+
+```{r}
+# person 1 using bayesrules functions
+
+plot_beta_binomial(alpha = 8, beta = 2, y = 12, n = 50)
+```
+
+```{r}
+# person 2 using bayesrules functions
+
+plot_beta_binomial(alpha = 1, beta = 20, y = 12, n = 50)
+```
+-c. 
+
+With the same data to update the understanding, the two salespeople's posterior are still different, A towards higher proportion, B towards lower proportion, but they are getting closer.  
+
+### Excercise 3.12
+
+-a. mean 15%, roughly ranging from 10% - 25%, 10.2% in 2017 is not used
+```{r}
+#identify a beta distribution by tuning 
+ggplot() +
+  geom_function(fun = ~dbeta(.x, shape1 = 15, shape2 = 85))
+
+```
+
+-b. y = 30, n = 90
+```{r}
+#identify a beta distribution by tuning 
+ggplot() +
+  geom_function(fun = ~dbeta(.x, shape1 = 15+30, shape2 = 85+90-30))
+
+```
+
+-c.
+a = 15, b = 85, y = 30, n = 90
+
+Plug in Equation 3.11
+
+```{r}
+#mean
+(15+30)/(15+85+90)
+#mode
+(15+30-1)/(15+85+90-2)
+#sd
+sqrt((15+30)*(85+90-30)/((15+85+90)^2*(15+85+90+1)))
+```
+
+-d.
+
+```{r}
+plot_beta_binomial(alpha = 15, beta = 85, y = 30, n = 90)
+```
+
+Prior is updated with new data of higher proportion to have higher mean, and the variance seems to be smaller too. 
+
+### Excersise 3.14
+
+```{r}
+summarize_beta_binomial(alpha = 2, beta = 3, y = 9, n = 30)
+```
+
+
+Will stop here, nothing new to practice for the questions below. 
 
 
 
