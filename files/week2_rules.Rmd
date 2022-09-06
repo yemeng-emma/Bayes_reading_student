@@ -1,5 +1,5 @@
 ---
-title: "Week2"
+title: "Week2 Bayes Rules"
 author: "Meng Ye"
 date: "2022-08-31"
 output: html_document

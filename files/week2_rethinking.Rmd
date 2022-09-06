@@ -1,37 +1,265 @@
 ---
-title: "Week2"
+title: "Week2 Rethinking"
 author: "Meng Ye"
-date: "2022-08-31"
+date: "2022-09-02"
 output: html_document
 ---
 
 ```{r load packages, message=FALSE, warning=FALSE}
 library(bayesrules)
 library(tidyverse)
-library(janitor)
+library(rethinking)
+library(patchwork)
 ```
 
 
 # Stats Rethinking Chapter 2
 
-## Follow along Bayes Rules Chapter 2
+## Notes and selected follow along
+
+### 2.1 The Garden of Forking Data
+
+No superstition. Bayesian inference is just counting and comparing possibilities. 
+
+Possibilities -> *conjectures*
+
+Principle of indifference, comparable to non-Bayesian approaches. The structure of the model and the scientific context always provide information that allows us to do better than ignorance.
+
+
+
+### 2.2 Building a Model
+
+A Bayesian model begins with one set of plausibilities assigned to each of these possibilities. Then it updates them in light of the data, to produce the posterior plausibilities. 
+
+It is possible to mathematically divide out the observation, to infer the previous plausibility curve. So the data could be presented to your model in any order, or all at once even. 
+
+Non-Bayesian care for sample size -> In contrast, Bayesian estimates are valid for any sample size. But the price for this power is dependency upon the initial plausibilities, the prior. 
+
+
+### 2.3 Components of the Model
+
+information entropy/maximum entropy: disorder? death of the universe? Actually it eans that the distribution contains no additional information other than: two events, with p and 1-p
+
+
+-observed variables: the likelihood function part
+
+-unobserved variables: the parameters. "Since p is not observed, we usually call it a parameter". 
+
+Bayes' theorem:
+
+$$Posterior = \frac{Probility\;of\; the\; data \times Prior}{Average\; Probability\; of\; the\; data}$$
+
+Average probability: average over the prior, its job is just to standardize the posterior
+
+Bayes rules: Law of total probability
+
+Also the expectation or *marginal likelihood*
+
+
+### 2.4 Making the Model Go
+
+data (likelihood) + prior (of parameters) -> posterior distribution
+
+The distribution contains the relative plausibility of different parameter values, conditional on the data and the model. 
+
+Three conditioning engines:
+
+-(1) Grid approximation
+-(2) Quadratic approximation
+-(3) Markov chain Monte Carlo (MCMC)
+
+### example: the grid approximation method
+
+```{r}
+set.seed(5431)
+p_grid <- seq(0, 1, length.out = 20)
+
+```
+
+```{r}
+# Probability of each value of p
+# Super vague uniform prior: just 1 at each possible p
+prob_p_uniform <- rep(1, 20)
+
+# Probability of each proportion, given 6/9 water draws
+prob_data <- dbinom(6, size = 9, prob = p_grid)
+
+# Unnormalized posterior
+posterior_raw <- prob_data * prob_p_uniform
+
+# Normalized posterior that sums to 1
+posterior_normalized <- posterior_raw / sum(posterior_raw)
+
+plot(p_grid, posterior_normalized, type = "b")
+```
+tidyverse practice: replication of Figure 2.6 
+```{r}
+sequence_length <- 1e3
+
+data_multiple <-
+  tibble(probability = seq(from = 0, to = 1, length.out = sequence_length)) %>% 
+  expand(probability, row = c("flat", "stepped", "Laplace"))%>% 
+  arrange(row, probability) %>% 
+  mutate(prior = ifelse(row == "flat", 1,
+                        ifelse(row == "stepped", rep(0:1, each = sequence_length / 2),
+                               exp(-abs(probability - 0.5) / .25) / ( 2 * 0.25))),
+         likelihood = dbinom(x = 6, size = 9, prob = probability)) %>% 
+  group_by(row) %>% 
+  mutate(posterior = prior * likelihood / sum(prior * likelihood)) %>% 
+  pivot_longer(prior:posterior)  %>% 
+  ungroup() %>% 
+  mutate(name = factor(name, levels = c("prior", "likelihood", "posterior")),
+         row  = factor(row, levels = c("flat", "stepped", "Laplace")))
+```
+
+
+```{r}
+p1 <-
+  data_multiple %>%
+  filter(row == "flat") %>% 
+  ggplot(aes(x = probability, y = value)) +
+  geom_line() +
+  scale_x_continuous(NULL, breaks = NULL) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  theme(panel.grid = element_blank()) +
+  facet_wrap(~ name, scales = "free_y")
+
+p2 <-
+  data_multiple %>%
+  filter(row == "stepped") %>% 
+  ggplot(aes(x = probability, y = value)) +
+  geom_line() +
+  scale_x_continuous(NULL, breaks = NULL) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  theme(panel.grid = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_blank()) +
+  facet_wrap(~ name, scales = "free_y")
+
+p3 <-
+  data_multiple %>%
+  filter(row == "Laplace") %>% 
+  ggplot(aes(x = probability, y = value)) +
+  geom_line() +
+  scale_x_continuous(NULL, breaks = c(0, .5, 1)) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  theme(panel.grid = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_blank()) +
+  facet_wrap(~ name, scales = "free_y")
+
+# combine
+p1 / p2 / p3
+```
+
+Read the explanation for quadratic approximation and MCMC for intuition for now. Save writing codes to replicate the process later. 
+ps: rationable behind R code 2.7 indeed was explained in Bayes rules.
 
 ## Questions for the chapter
 
-## Practices for Beyes Rules Chapter 2
+1. Bayes rules call the updating information the likelihood function, the Rethinking calls it  ways the outcome observed can produce. Apart from the intuition, can I understand this term as the weighting adjustment of the prior to get the posterior?
+
+2. In Bayesian analysis, the coef for the main IV is the "parameter", how about the coef for control variables?
+
+3. The normalizing constant: both explanation as average probability and the law of total probability is correct (weighted average)？
+
+
+$$Pr(W,L) = E (Pr(W,L|p)) = \int Pr(W,L|p) Pr(p)dp$$
+4. About the parser and denser grid exemplified on P41, denser grid does better approximation (the marginal return drops), so why does the author say sample size does not matter for Bayesian? 
+
+## Practices 
+
+### 2H1
+
+Understanding the question as:
+
+p(twins) prior distribution is 0.5/0.5 (equally common), and p's values are 0.1 and 0.3.
+
+If we understand her next birth as an independent event, what 2H1 asks is the marginal probability that is 
+
+$$marginal\; probability = 0.1*0.5+0.2*0.5=0.15$$ 
+### 2H2
 
 
 
+```{r}
+#still borrowing Bayes rules terming of pi
+panda <- tibble(pi_value = c(0.1, 0.2),
+                pi_prior = c(0.5, 0.5)) %>% 
+  mutate(likelihood = choose(1,1) * pi_value^1 * (1 - pi_value)^0) %>%
+  mutate(unnormalized = pi_prior * likelihood) %>% 
+  mutate(normalizing_constant = sum(unnormalized)) %>% 
+  mutate(pi_posterior = unnormalized/normalizing_constant)
 
+panda$pi_posterior
+```
+
+The probability that the panda mother is from Species A is 0.3333.
+
+
+### 2H3
+Updating the likelihood function 
+
+```{r}
+#still borrowing Bayes rules terming of pi
+panda2 <- tibble(pi_value = c(0.1, 0.2),
+                pi_prior = c(0.5, 0.5)) %>% 
+  mutate(likelihood = choose(2,1) * pi_value^1 * (1 - pi_value)^1) %>%
+  mutate(unnormalized = pi_prior * likelihood) %>% 
+  mutate(normalizing_constant = sum(unnormalized)) %>% 
+  mutate(pi_posterior = unnormalized/normalizing_constant)
+
+panda2$pi_posterior
+```
+
+The probability that the panda mother is from Species A is 0.36.
+
+
+### 2H4
+First without birth data
+
+```{r}
+#still borrowing Bayes rules terming of pi
+panda2 <- tibble(pi_value = c(0.1, 0.2),
+                pi_prior = c(0.5, 0.5)) %>% 
+  mutate(likelihood = choose(2,1) * pi_value^1 * (1 - pi_value)^1) %>%
+  mutate(unnormalized = pi_prior * likelihood) %>% 
+  mutate(normalizing_constant = sum(unnormalized)) %>% 
+  mutate(pi_posterior = unnormalized/normalizing_constant)
+
+panda2$pi_posterior
+```
+
+Then with birth data Twin + Single 
+
+```{r}
+#still borrowing Bayes rules terming of pi
+panda2 <- tibble(pi_value = c(0.1, 0.2),
+                pi_prior = c(0.5, 0.5)) %>% 
+  mutate(likelihood = choose(2,1) * pi_value^1 * (1 - pi_value)^1) %>%
+  mutate(unnormalized = pi_prior * likelihood) %>% 
+  mutate(normalizing_constant = sum(unnormalized)) %>% 
+  mutate(pi_posterior = unnormalized/normalizing_constant)
+
+panda2$pi_posterior
+```
 
 
 # Stats Rethinking Chapter 3
 
-## Follow along Bayes Rules Chapter 3
+## Notes and selected follow along
+
+### Sampling from a Grid-Approximate posterior
+
+### Sampling to Summarize
+
+### Sampling to Simulate Prediction
 
 ## Questions for the chapter
 
-## Practices for Beyes Rules Chapter 3
+## Practices 
+
+
 
 
 
