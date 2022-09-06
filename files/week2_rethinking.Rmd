@@ -41,9 +41,9 @@ Non-Bayesian care for sample size -> In contrast, Bayesian estimates are valid f
 information entropy/maximum entropy: disorder? death of the universe? Actually it eans that the distribution contains no additional information other than: two events, with p and 1-p
 
 
--observed variables: the likelihood function part
+- observed variables: the likelihood function part
 
--unobserved variables: the parameters. "Since p is not observed, we usually call it a parameter". 
+- unobserved variables: the parameters. "Since p is not observed, we usually call it a parameter". 
 
 Bayes' theorem:
 
@@ -64,9 +64,9 @@ The distribution contains the relative plausibility of different parameter value
 
 Three conditioning engines:
 
--(1) Grid approximation
--(2) Quadratic approximation
--(3) Markov chain Monte Carlo (MCMC)
+- (1) Grid approximation
+- (2) Quadratic approximation
+- (3) Markov chain Monte Carlo (MCMC)
 
 ### example: the grid approximation method
 
@@ -93,6 +93,7 @@ posterior_normalized <- posterior_raw / sum(posterior_raw)
 plot(p_grid, posterior_normalized, type = "b")
 ```
 tidyverse practice: replication of Figure 2.6 
+
 ```{r}
 sequence_length <- 1e3
 
@@ -165,6 +166,7 @@ ps: rationable behind R code 2.7 indeed was explained in Bayes rules.
 
 
 $$Pr(W,L) = E (Pr(W,L|p)) = \int Pr(W,L|p) Pr(p)dp$$
+
 4. About the parser and denser grid exemplified on P41, denser grid does better approximation (the marginal return drops), so why does the author say sample size does not matter for Bayesian? 
 
 ## Practices 
@@ -220,42 +222,109 @@ First without birth data
 
 ```{r}
 #still borrowing Bayes rules terming of pi
-panda2 <- tibble(pi_value = c(0.1, 0.2),
+panda_test <- tibble(pi_value = c(0.8, 0.65),
                 pi_prior = c(0.5, 0.5)) %>% 
-  mutate(likelihood = choose(2,1) * pi_value^1 * (1 - pi_value)^1) %>%
+  mutate(likelihood = choose(1,1) * pi_value^1 * (1 - pi_value)^0) %>%
   mutate(unnormalized = pi_prior * likelihood) %>% 
   mutate(normalizing_constant = sum(unnormalized)) %>% 
   mutate(pi_posterior = unnormalized/normalizing_constant)
 
-panda2$pi_posterior
+panda_test$pi_posterior
 ```
 
 Then with birth data Twin + Single 
 
 ```{r}
 #still borrowing Bayes rules terming of pi
-panda2 <- tibble(pi_value = c(0.1, 0.2),
-                pi_prior = c(0.5, 0.5)) %>% 
-  mutate(likelihood = choose(2,1) * pi_value^1 * (1 - pi_value)^1) %>%
+panda_test2 <- tibble(pi_value = c(0.8, 0.65),
+                pi_prior = c(0.36, 0.64)) %>% 
+  mutate(likelihood = choose(1,1) * pi_value^1 * (1 - pi_value)^0) %>%
   mutate(unnormalized = pi_prior * likelihood) %>% 
   mutate(normalizing_constant = sum(unnormalized)) %>% 
   mutate(pi_posterior = unnormalized/normalizing_constant)
 
-panda2$pi_posterior
+panda_test2$pi_posterior
 ```
-
 
 # Stats Rethinking Chapter 3
 
 ## Notes and selected follow along
 
-### Sampling from a Grid-Approximate posterior
+### Intro
 
-### Sampling to Summarize
+- probability format: harder to understand + present frequencies of events rather than theoretical parameters, all major statistical philosophies would agree to use Bayes' theorem in this case. In other words, Bayesian statistics $\neq$ Bayes Theorem
 
-### Sampling to Simulate Prediction
+- using counts rather than probabilities, *frequency format* or *natural frequencies*
+
+- imagine the probability distribution as drawing samples from it. The sampled events in this case are **parameter values**. This chapter: working with samples from the **posterior distribution**.
+
+- The Bayesian formalism treats parameter distributions as *relative plausibility*, not as any physical random process.
+
+- Why sampling? Transform integral (total probability in some interval) to counting values in the interval. Working with samples is enough to answer a bunch of question, without relying upon a captive mathematician. (Meaning approximating counious prob distribution with discrete ones?)
+
+### 3.1 Sampling from a Grid-Approximate posterior
+
+```{r}
+p_grid_ch3 <- seq(0, 1, length.out = 1000)
+
+prob_p <- rep(1, 1000)
+prob_data <- dbinom(6, size = 9, prob = p_grid_ch3)
+posterior_raw_ch3 <- prob_data * prob_p
+posterior_normalized_ch3 <- posterior_raw_ch3 / sum(posterior_raw_ch3)
+
+samples <- sample(p_grid_ch3, prob = posterior_normalized_ch3, size = 1e4, replace = TRUE)
+plot(samples)
+```
+```{r}
+# R code 3.5
+dens(samples)
+```
+
+All you've done is crudely replicate the posterior density you **had already computed**. This isn't of much value.
+
+
+### 3.2 Sampling to Summarize
+
+How to summarize posterior distribution depends on your purpose. 
+
+- intervals of defined boundaries
+- intervals of defined probability mass 
+  percentile intervals -> HPDI 
+  compatibility intervals: communicate the shape of a distribution
+- point estimates 
+
+
+```{r}
+# R code 3.11
+set.seed(5321)
+prob_data_skewed <- dbinom(3, size = 3, prob = p_grid_ch3)
+posterior_raw_skewed <- prob_data_skewed * prob_p
+posterior_normalized_skewed <- posterior_raw_skewed / sum(posterior_raw_skewed)
+
+samples_skewed <- sample(p_grid_ch3, prob = posterior_normalized_skewed, size = 1e4, replace = TRUE)
+```
+
+```{r}
+# similar result to R code 3.12
+PI(samples, prob = 0.5)
+```
+
+```{r}
+HPDI(samples_skewed, prob = 0.5)
+```
+
+The HPDI is narrower, according to the author, it is the narrowest by defination. 
+
+Remember, the entire posterior distribution is the Bayesian "estimate". It summarizes the relative plausibilities of each possible value of the parameter. 
+
+### 3.3 Sampling to Simulate Prediction
 
 ## Questions for the chapter
+
+1. What are the differences of `slice_sample()`, `sample_n()`, and `sample()`? In other words, how do I know which command to choose under various circumstances?
+
+2. In real Bayesian stats, we mostly don't know the posterior distribution, just the approximation right?
+
 
 ## Practices 
 
