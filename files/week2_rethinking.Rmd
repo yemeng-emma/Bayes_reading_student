@@ -317,7 +317,21 @@ The HPDI is narrower, according to the author, it is the narrowest by defination
 
 Remember, the entire posterior distribution is the Bayesian "estimate". It summarizes the relative plausibilities of each possible value of the parameter. 
 
+point: *maximum a posteriori* (MAP), or mean or median
+
+The two most common examples are the  absolute loss as above, which leads to the median as the point estimate, and the quadratic  loss (d − p) 2, which leads to the posterior mean (mean(samples)).
+
+
+
 ### 3.3 Sampling to Simulate Prediction
+
+- dummy:
+
+W/L example, the likelihood function works in both ways. 
+
+  - Given a realized observation, the likelihood functions says how plausible the observation is.
+  - Given only the parameters, the likelihood defines a distribution of posible observations that we can sample from, to simulate observation. 
+  
 
 ## Questions for the chapter
 
@@ -325,16 +339,148 @@ Remember, the entire posterior distribution is the Bayesian "estimate". It summa
 
 2. In real Bayesian stats, we mostly don't know the posterior distribution, just the approximation right?
 
+3. We need to test if software works correctly? When?
+
+4. Generally, I don't understand the sampling in this chapter is for.
 
 ## Practices 
 
 
+```{r}
+data(homeworkch3, package = "rethinking")
+
+all_births <- tibble(birth1, birth2)
+head(all_births)
+```
+
+### 3H1
+
+A birth being a boy, either birth 1 is a boy or birth 2 is a boy. 
+```{r}
+set.seed(1234)
+all_births_grid <- all_births %>% 
+  pivot_longer(cols = c(birth1, birth2), 
+               names_to = "order", values_to = "boy") %>% 
+  mutate(p_value = seq(from = 0, to = 1, length.out = 200),
+         p_prior = 1,
+         count_y = sum(boy)) %>% 
+  mutate(likelihood = dbinom(count_y, size = 200, prob = p_value)) %>% 
+  mutate(boy_posterior_unnorm = p_prior * likelihood) %>% 
+  mutate(boy_posterior = boy_posterior_unnorm/sum(boy_posterior_unnorm))
+
+head(all_births_grid)
+```
+
+Find the max point
+
+```{r}
+all_births_grid %>% 
+  filter(boy_posterior == max(boy_posterior)) %>% 
+  pull(p_value)
+```
+
+### 3H2
+```{r}
+birth_sample <- all_births_grid %>% 
+  slice_sample(n = 10000, weight_by = boy_posterior, replace = TRUE)
+
+summary(birth_sample)
+```
 
 
+```{r}
+HPDI(birth_sample$p_value, prob = 0.5)
+```
+
+```{r}
+HPDI(birth_sample$p_value, prob = 0.89)
+```
+
+```{r}
+HPDI(birth_sample$p_value, prob = 0.97)
+```
 
 
+### 3H3
+
+```{r}
+birth_sim <- tibble(
+  simulated_birth = rbinom(10000, size = 200, prob = birth_sample$p_value)
+)
+
+ggplot(birth_sim, aes(x = simulated_birth)) +
+  geom_density() +
+  geom_vline(xintercept = 111, color = "red") +
+  theme_bw()
+```
+
+### 3H4
+
+Tried to update several times but look misplaced...
+
+```{r}
+set.seed(1234)
+
+first_births_grid <- tibble(
+  p_value = seq(from = 0, to = 1, length.out = 1001),
+  p_prior = 1) %>% 
+  mutate(likelihood = dbinom(51, size = 100, prob = p_value)) %>% 
+  mutate(boy_posterior_unnorm = p_prior * likelihood) %>% 
+  mutate(boy_posterior = boy_posterior_unnorm/sum(boy_posterior_unnorm))
+
+head(first_births_grid)
+```
 
 
+```{r}
+first_sample <- first_births_grid %>% 
+  slice_sample(n = 10000, weight_by = boy_posterior, replace = TRUE)
+
+birth1_sim <- tibble(
+  simulated_birth = rbinom(10000, size = 100, prob = first_sample$p_value)
+)
+
+ggplot(birth1_sim, aes(x = simulated_birth)) +
+  geom_density() +
+  geom_vline(xintercept = 51, color = "red") +
+  theme_bw()
+```
+
+### 3H5
+
+```{r}
+all_births %>% 
+  filter(birth1 == 0) %>% 
+  summarise(total = n(),
+            n_boy = sum(birth2))
+```
+
+
+"Good": in Chinese if you write the character "girl" on the left (first), and then write "boy" on the right (second), the combined character is "good". So the sequence we are calculating here is called "good".
+
+
+```{r}
+good_grid <- tibble(
+  p_value = seq(from = 0, to = 1, length.out = 1001),
+  p_prior = 1) %>% 
+  mutate(likelihood = dbinom(39, size = 49, prob = p_value)) %>% 
+  mutate(boy_posterior_unnorm = p_prior * likelihood) %>% 
+  mutate(boy_posterior = boy_posterior_unnorm/sum(boy_posterior_unnorm))
+
+good_sample <- good_grid %>% 
+  slice_sample(n = 10000, weight_by = boy_posterior, replace = TRUE)
+
+good_sim <- tibble(
+  simulated_birth = rbinom(10000, size = 49, prob = good_sample$p_value)
+)
+
+ggplot(good_sim, aes(x = simulated_birth)) +
+  geom_density() +
+  geom_vline(xintercept = 51, color = "red") +
+  theme_bw()
+```
+
+The compatibility is poor. Indicating the second birth is not independent from the first birth. 
 
 
 
