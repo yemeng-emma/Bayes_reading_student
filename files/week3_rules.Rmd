@@ -1,0 +1,215 @@
+---
+title: "Week3 Bayes Rules"
+author: "Meng Ye"
+date: "2022-09-07"
+output: html_document
+---
+
+```{r load packages, message=FALSE, warning=FALSE}
+library(bayesrules)
+library(tidyverse)
+library(patchwork)
+```
+
+# Bayes Rules Chapter 4
+
+## Follow along Bayes Rules Chapter 4
+
+### 4.1 different priors, different posteriors
+
+```{r}
+# Import data
+data(bechdel, package = "bayesrules")
+
+# Take a sample of 20 movies
+set.seed(84735)
+bechdel_20 <- bechdel %>% 
+  sample_n(20)
+
+bechdel_20 %>% 
+  head(3)
+```
+### 4.2 different data, different posteriors
+
+sample size different, variance and posterior different
+
+### 4.3 Stricking a balance between prior and the data 
+
+The posterior mean is a **weighted average** of prior mean and sample success rate. Their distinct weights summing to 1. 
+
+$$E(\pi|Y=y) = \frac{\alpha +y}{\alpha + \beta + n}$$
+$$E(\pi|Y=y) = \frac{\alpha +\beta}{\alpha + \beta + n} \cdot E(\pi) + \frac{n}{\alpha + \beta + n} \cdot \frac{y}{n}$$
+As $n \rightarrow \infty$
+
+$$E(\pi|Y=y) \rightarrow \frac{y}{n}$$
+
+ps: updated with a weighted addition of the proportion in the new data
+
+### 4.4 Sequential analysis: Evolving with data
+
+Or Bayesian learning: Rethinking says basically it's equavalent to using all the information all at once
+
+Here: **data order invariant**
+
+The final posterior only depends upon the *cumulative* data. 
+
+### 4.5 proof
+
+Basically, prior and likelihood function **times** up and there is no order in timing things up 
+
+### 4.6 Don't be stubborn 
+
+be sure to assign non-0 plausibility to every possible value of $\pi$
+
+### 4.7 subjectivity?
+
+Not necessarily a bad thing. All about balance!
+
+And there is no such thing as subjectivity-free research.
+
+
+## Question list
+
+None.
+
+## Practice
+
+### Exercise 4.4
+
+```{r}
+p1 <- plot_beta(1, 2)
+p2 <- plot_beta(0.5, 1)
+p3 <- plot_beta(3, 10)
+p4 <- plot_beta(2, 0.1) # super optimistic 
+(p1 | p2) / (p3 | p4)
+```
+
+### Excercise 4.5 Simulation 
+
+y = 3, n = 7
+
+```{r}
+set.seed(1234)
+```
+
+Plot Kimya's histogram and compute simulated mean 
+```{r}
+kimya_sim <- tibble(pi = rbeta(10000, 1, 2)) %>%
+  mutate(y_count = rbinom(10000, size = 7, prob = pi))
+
+kimya_sim_mean <- kimya_sim %>% 
+  filter(y_count == 3) %>% 
+  summarize(sim_mean = mean(pi))
+```
+
+
+```{r}
+p_K <- ggplot(filter(kimya_sim, y_count == 3), 
+              aes(x = pi, y = ..density..)) + 
+  geom_histogram(binwidth = 0.02,  color = "white", 
+                 alpha = 0.7, boundary = 0, fill = "red") +
+  geom_density() +
+  coord_cartesian(xlim = c(0, 1)) +
+  labs(title = "Kimya") +
+  theme_bw()
+```
+
+Plot Fernando's histogram and compute simulated mean 
+
+```{r}
+Nando_sim <- tibble(pi = rbeta(10000, 0.5, 1)) %>%
+  mutate(y_count = rbinom(10000, size = 7, prob = pi))
+
+Nando_sim_mean <- Nando_sim %>% 
+  filter(y_count == 3) %>% 
+  summarize(sim_mean = mean(pi))
+```
+
+
+```{r}
+p_F <- ggplot(filter(Nando_sim, y_count == 3), 
+              aes(x = pi, y = ..density..)) + 
+  geom_histogram(binwidth = 0.02,  color = "white", 
+                 alpha = 0.7, boundary = 0, fill = "orange") +
+  geom_density() +
+  coord_cartesian(xlim = c(0, 1)) +
+  labs(title = "Fernando") +
+  theme_bw()
+```
+
+Plot Ciara's histogram and compute simulated mean 
+
+
+```{r}
+Ciara_sim <- tibble(pi = rbeta(10000, 3, 10)) %>%
+  mutate(y_count = rbinom(10000, size = 7, prob = pi))
+
+Ciara_sim_mean <- Ciara_sim %>% 
+  filter(y_count == 3) %>% 
+  summarize(sim_mean = mean(pi))
+```
+
+
+```{r}
+p_C <- ggplot(filter(Ciara_sim, y_count == 3), 
+              aes(x = pi, y = ..density..)) + 
+  geom_histogram(binwidth = 0.02,  color = "white", 
+                 alpha = 0.7, boundary = 0, fill = "dark green") +
+  geom_density() +
+  coord_cartesian(xlim = c(0, 1)) +
+  labs(title = "Ciara") +
+  theme_bw()
+```
+
+```{r}
+Taylor_sim <- tibble(pi = rbeta(10000, 2, 0.1)) %>%
+  mutate(y_count = rbinom(10000, size = 7, prob = pi))
+
+Taylor_sim_mean <- Taylor_sim %>% 
+  filter(y_count == 3) %>% 
+  summarize(sim_mean = mean(pi))
+```
+
+
+```{r}
+p_T <- ggplot(filter(Taylor_sim, y_count == 3), 
+              aes(x = pi, y = ..density..)) + 
+  geom_histogram(binwidth = 0.02,  color = "white", 
+                 alpha = 0.7, boundary = 0, fill = "navy blue") +
+  geom_density() +
+  coord_cartesian(xlim = c(0, 1)) +
+  labs(title = "Taylor") +
+  theme_bw()
+```
+Show coworker's graphs together 
+
+```{r fig.height=6, fig.width=9}
+(p_K | p_F) / (p_C | p_T)
+```
+```{r}
+#combine simulated mean 
+sim_pi_mean <- rbind(kimya_sim_mean, Nando_sim_mean, Ciara_sim_mean, Taylor_sim_mean)
+```
+
+
+### Excercise 4.6 Real poster  
+a + 3
+b + 4
+
+```{r}
+real_pi_mean <- tribble(
+  ~coworker,  ~real_mean, 
+  "Kimya",    (1+3)/(1+2+7),
+  "Fernando", (0.5+3)/(0.5+1+7),
+  "Ciara",    (3+3)/(3+10+7),
+  "Taylor",   (2+3)/(2+0.1+7),
+)
+
+cbind(real_pi_mean, sim_pi_mean)
+```
+Looks good!
+
+# Bayes Rules Chapter 5
+
+
+## Follow along Bayes Rules Chapter 5
