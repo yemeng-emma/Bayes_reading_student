@@ -193,8 +193,9 @@ sim_pi_mean <- rbind(kimya_sim_mean, Nando_sim_mean, Ciara_sim_mean, Taylor_sim_
 
 
 ### Excercise 4.6 Real poster  
-a + 3
-b + 4
+a' = a + 3
+b' = b + 4
+n = 7
 
 ```{r}
 real_pi_mean <- tribble(
@@ -209,7 +210,84 @@ cbind(real_pi_mean, sim_pi_mean)
 ```
 Looks good!
 
-# Bayes Rules Chapter 5
+
+
+# Bayes Rules Chapter 5 Conjugate Families
+
+Author says aka "happy" families.
+
+This chapter seems to be continuing on this path of calculating **exact** *continuous* posterior distribution with some math tricks. 
 
 
 ## Follow along Bayes Rules Chapter 5
+
+### 5.1 Revisiting choice of prior (Beta-Binomial)
+
+**Conjugate priors** are: those have posteriors from the same family. 
+
+ps: because you have the same pdf structure/shape (with old and updated parameters), you can do some munipulation and operations on them
+
+
+### 5.2 Gamma-Poisson conjugate family
+
+- The model (math)
+
+$\lambda$ -> "rate"
+
+Each of the n days can be **independently modeled** by the Poisson. Then, on **each day** $i$
+
+
+
+$$Y_i|\lambda \; {ind\atop \sim} \; Pois(\lambda)$$
+PMF
+
+$$f(y_i|\lambda) = \frac{\lambda^y e^{-\lambda}}{y!} \; for \; y\in \{ 0, 1, 2, ...\}$$
+Joint PMF for the collective or joint information 
+
+$$f(\vec y |\lambda) = {\prod\limits^n_{i=1}} f(y_i|\lambda) $$
+$$= \frac{\lambda \Sigma y_ie^{-n\lambda}}{\prod^n_{i=1} y_i!}$$
+- Tuning priors
+
+Here author says $\lambda$ is continous and can be whole number 
+
+```{r}
+plot_poisson_likelihood(y = c(6, 2, 2, 1), lambda_upper_bound = 10)
+```
+
+
+```{r}
+plot_gamma_poisson(shape = 10, rate = 2, sum_y = 11, n = 4)
+```
+
+
+
+### 5.3 Normal-Normal conjugate family 
+
+
+
+## Question list
+
+1. Some terminology questions: What is hyperparameter?
+2. Poisson: can $\lambda$ not be whole number? 
+
+## Practice 
+
+### 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
