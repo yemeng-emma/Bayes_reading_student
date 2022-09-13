@@ -238,17 +238,23 @@ Each of the n days can be **independently modeled** by the Poisson. Then, on **e
 
 
 
-$$Y_i|\lambda \; {ind\atop \sim} \; Pois(\lambda)$$
+$$Y_i|\lambda \;_\sim^{ind} \; Pois(\lambda)\\
 PMF
 
-$$f(y_i|\lambda) = \frac{\lambda^y e^{-\lambda}}{y!} \; for \; y\in \{ 0, 1, 2, ...\}$$
+f(y_i|\lambda) = \frac{\lambda^y e^{-\lambda}}{y!} \; for \; y\in \{ 0, 1, 2, ...\}\\
+E(Y|\lambda = Var(Y|\lambda) = \lambda)
+$$
 Joint PMF for the collective or joint information 
 
-$$f(\vec y |\lambda) = {\prod\limits^n_{i=1}} f(y_i|\lambda) $$
-$$= \frac{\lambda \Sigma y_ie^{-n\lambda}}{\prod^n_{i=1} y_i!}$$
+$$
+f(\vec y |\lambda) = {\prod\limits^n_{i=1}} f(y_i|\lambda)\\
+
+ = \frac{\lambda \Sigma y_ie^{-n\lambda}}{\prod^n_{i=1} y_i!}
+$$
+
 - Tuning priors
 
-Here author says $\lambda$ is continous and can be whole number 
+Here author says $\lambda$ is a positive and continuous rate
 
 ```{r}
 plot_poisson_likelihood(y = c(6, 2, 2, 1), lambda_upper_bound = 10)

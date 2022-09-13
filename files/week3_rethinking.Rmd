@@ -1,0 +1,257 @@
+---
+title: "Week3 Rethinking"
+author: "Meng Ye"
+date: "2022-09-08"
+output: html_document
+---
+
+```{r load packages, message=FALSE, warning=FALSE}
+library(bayesrules)
+library(tidyverse)
+library(rethinking)
+```
+
+```{r}
+set.seed(1234)
+```
+
+# Chapter 4 Geocentric Models
+
+That is linear regression models -> a series, an additive (leanear) combination of other measurements. 
+
+Linear regression as a Bayesian procedure: using Gaussian (normal) distribution. 
+
+## 4.1 Why normal distributions are normal 
+
+- Normal by addition
+
+Sum of binomial -> normal distribution 
+
+```{r}
+# simulate above
+
+pos <- replicate(1000, sum(runif(16, -1, 1)))
+plot(density(pos))
+```
+
+The point: Any process that adds together random values from the same distribution converges to a normal!
+
+- Normal by multiplication 
+
+```{r}
+growth <- replicate(10000, prod(1 + runif(12, 0, 0.1)))
+dens(growth, norm.comp = TRUE)
+```
+The point: Multiplying small numbers is approximately the same as addition. 
+
+
+```{r}
+growth_big <- replicate(10000, prod(1 + runif(12, 0, 0.5)))
+dens(growth_big, norm.comp = TRUE)
+```
+
+
+```{r}
+growth_small <- replicate(10000, prod(1 + runif(12, 0, 0.01)))
+dens(growth_small, norm.comp = TRUE)
+```
+Nice!
+
+- Normal by log-multiplication
+
+```{r}
+log.big <- replicate(10000, log(prod( 1 + runif(12, 0, 0.5))))
+dens(log.big, norm.comp = TRUE)
+```
+
+Of course if you log exponential, it will becomes linear again
+
+- Justification for using Gaussian distributions 
+
+  (1) ontological and (2) epistemological 
+  
+  Guassian pdf: bell shape is from the exp(.) of a quadratic form
+  
+  Probability distributions with only **discrete outcomes**, like the binomial, are called "probability mass functions" and denoted **Pr**. Continuous ones like the Gaussian are called "probability density functions",  denoted with p or just plain old f, depending upon author and tradition. For mathematical reasons,  probability densities can be greater than 1. Try dnorm(0,0,0.1), for example, which is the way to  make R calculate p(0|0, 0.1). The answer, about 4, is no mistake. 
+  
+  Area of pdf are probability mass. 
+  
+  **Probability density is the rate of change in cumulative probability.** So where cumulative probability is increasing rapidly, density can exceed 1. 
+
+
+
+
+## 4.2 A language for describing models 
+
+- language:
+
+  data: observable
+  parameters: unobservable, e.g., rates, averages
+  define variable as: a. in terms of other variables OR b. a probability distribution
+  combination of variables & their probability distribution -> *joint generative model* 
+  -> to do: a. simulate hypothetical observations OR b. analyze real ones. 
+  
+- Model in terms of variables as PD is then:
+
+$$
+y_i \sim Normal(\mu_i, \sigma) \\
+\mu_i = \beta x_i\\
+\beta \sim Normal(0,10)\\
+
+\sigma \sim Exponential(1)\\
+
+\\x_i \sim Normal(0,1)
+
+$$
+
+How does it look to apply Bayesian stats to the model above?
+
+Using globe tossing case as an example
+
+$$W \sim Binomial (N, p)$$
+$$p \sim Uniform (0, 1)$$
+
+ps: equivalent to x = p, y = W? Seems not like y = ax + b kind of model yet. Not b/beta here. But linear regression is coming up.
+
+
+## 4.3 Gaussian model of height
+
+Building a linear regression model now! 
+
+That is, we want a single measurement variable to model as a Gaussian distribution. 
+
+Bayesian updating will allow us to consider  every possible combination of values for µ and σ and to score each combination by its relative plausibility, in light of the data. These relative plausibilities are the posterior probabilities of  each combination of values µ, σ. 
+
+
+We want our Bayesian machine to consider every possible distribution,  each defined by a combination of µ and σ, and rank them by posterior plausibility. Posterior  plausibility provides a measure of the logical compatibility of each possible distribution with  the data and model. 
+
+keeping in mind that the “estimate” here will be the entire posterior distribution, not any point within it.
+
+the posterior distribution will be a  distribution of Gaussian distributions. **Yes, a distribution of distributions.**
+
+
+```{r}
+data(Howell1)
+d <- Howell1
+precis(d)
+```
+```{r}
+d2 <- d[d$age >= 18, ]
+```
+
+```{r}
+curve( dnorm( x, 178, 20), from = 100, to = 250)
+```
+```{r}
+curve( dunif( x, 0, 50), from=-10, to=60)
+```
+$$
+h_i \sim \text{Normal}(\mu, \sigma) \; \text{[likeliood function/data generating order]}\\
+\mu \sim \text{Normal} (178,20) \; \text{[mu prior]}\\
+\sigma \sim \text{Uniform} (0, 50) \; \text{[sigma prior]}
+$$
+
+
+```{r}
+sample_mu <- rnorm(1e4, 178, 20)
+sample_sigma <- runif(1e4, 0, 50)
+prior_h <- rnorm(1e4, sample_mu, sample_sigma)
+dens(prior_h)
+```
+
+The simulation ↑ is the **expected distribution** of heights, averaged over the prior
+
+It is a ***joint*** prior distribution of individual heights.
+
+Remember: the distribution you see is **not** an empirical expectation, but rather the distribution of relative plausibilities of different heights (so to speak "priors"), before seeing the data. 
+
+
+```{r}
+sample_mu2 <- rnorm(1e4, 178, 100)
+prior_h2 <- rnorm(1e4, sample_mu2, sample_sigma)
+dens(prior_h2)
+```
+
+- posterior distribution for the model (p84)
+
+Joint distribution, $Pr(\mu, \sigma | h)$ (given data h, the parameter of the probability distribution of h) - is the product - $\prod_i$ of the probability distribution of $h_i, \mu$, and $\sigma$
+
+- simulation of posterior 
+
+```{r}
+mu.list <- seq( from=150, to=160, length.out=100) 
+
+sigma.list <- seq( from=7, to=9, length.out=100)  
+
+post <- expand.grid( mu=mu.list, sigma=sigma.list)  
+
+post$LL <- sapply( 1:nrow(post), function(i) sum(
+  dnorm( d2$height, post$mu[i], post$sigma[i], log=TRUE)))  
+
+post$prod <- post$LL + dnorm( post$mu, 178, 20, TRUE) + dunif( post$sigma, 0, 50, TRUE)  
+post$prob <- exp( post$prod - max(post$prod))  
+```
+
+
+```{r}
+contour_xyz( post$mu, post$sigma, post$prob ) 
+```
+
+```{r}
+image_xyz( post$mu, post$sigma, post$prob ) 
+```
+
+The only new trick is that since there are two parameters, and  we want to sample combinations of them, we first randomly sample row numbers in post in proportion to the values in post$prob. Then we pull out the parameter values on those randomly sampled rows.
+
+
+Tidyverse translation of the simulation of posterior 
+```{r}
+n <- 200
+
+d_grid <-
+  # we'll accomplish with `tidyr::crossing()` what McElreath did with base R `expand.grid()`
+  crossing(mu    = seq(from = 140, to = 160, length.out = n),
+           sigma = seq(from = 4, to = 9, length.out = n))
+
+glimpse(d_grid)
+```
+
+```{r}
+#density function with log = T
+grid_function <- function(mu, sigma) {
+  
+  dnorm(d2$height, mean = mu, sd = sigma, log = T) %>% 
+    sum()
+  
+}
+```
+
+
+```{r}
+d_grid <-
+  d_grid %>% 
+  mutate(log_likelihood = map2(mu, sigma, grid_function)) %>%
+  unnest(log_likelihood) %>% 
+  mutate(prior_mu    = dnorm(mu, mean = 178, sd = 20, log = T),
+         prior_sigma = dunif(sigma, min = 0, max = 50, log = T)) %>% 
+  mutate(product = log_likelihood + prior_mu + prior_sigma) %>% 
+  mutate(probability = exp(product - max(product)))
+  
+head(d_grid)
+```
+
+
+
+## Question list 
+
+1. General data simulation question: pivoting from the f(x) rationale to the simulation rationale. Which elements correspond to which. The general underlying logic order: the same as the true data generating process?  
+
+2. We start to get into joint probability this week. Is that in statistical analysis of empirical models, almost always you work with joint probability, because there are multiple variables, at least x and y?
+
+
+
+
+
+
+
+
