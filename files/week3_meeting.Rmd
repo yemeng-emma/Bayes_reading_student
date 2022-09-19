@@ -1,0 +1,120 @@
+---
+title: "Week3 Meeting"
+date: "2022-09-07"
+output: html_document
+---
+
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(broom)
+library(palmerpenguins)
+library(brms)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+penguins <- penguins %>% drop_na(sex)
+```
+
+```{r}
+simple_model <- lm(body_mass_g ~ bill_length_mm + flipper_length_mm, data = penguins)
+tidy(simple_model)
+```
+
+
+$$
+\begin{aligned}
+\text{body mass } &\sim \mathcal{N}(\mu, \sigma) \\
+\mu_i &= \alpha + \beta_1 \text{bill length} + \beta_2 \text{flipper length} \\
+\\
+\alpha &\sim \mathcal{N}(4000, 750) \\
+\beta &\sim \mathcal{N}(0, 5) \\
+\sigma &\sim \operatorname{Uniform}(0, 10)
+\end{aligned}
+$$
+
+
+
+```{r}
+ggplot() +
+  geom_function(fun = ~dnorm(., 4000, 750)) +
+  xlim(c(0, 6000))
+```
+
+```{r}
+ggplot() +
+  geom_function(fun = ~dnorm(., 0, 5)) +
+  xlim(c(-10, 10))
+```
+
+
+```{r}
+priors <- c(prior(normal(60, 10), class = Intercept),
+            prior(normal(0, 10), class = b),
+            prior(uniform(0, 10), class = sigma, lb = 0, ub = 10))
+
+get_prior(bf(body_mass_g ~ bill_length_mm + flipper_length_mm),
+          data = penguins,
+          family = gaussian())
+```
+
+
+```{r}
+model_penguin <- brm(
+  bf(body_mass_g ~ 1 + bill_length_mm + flipper_length_mm),
+  data = penguins,
+  family = gaussian(),
+  prior = c(prior(normal(4000, 750), class = Intercept),
+            prior(normal(0, 5), class = b),
+            prior(uniform(0, 10), class = sigma, ub = 10))
+)
+model_penguin
+prior_summary(model_penguin)
+```
+
+
+```{r}
+library(broom)
+asdf <- penguins %>% 
+  group_by(species) %>% 
+  nest()
+
+qwer <- asdf %>% 
+  mutate(model = map(data, ~lm(body_mass_g ~ bill_length_mm, data = .x))) %>% 
+  mutate(tidied = map(model, ~tidy(.)))
+
+library(modelsummary)
+
+modelsummary(qwer$model)
+
+summary(qwer[1,3][[1]])
+```
+
+```{r}
+worker_priors <- tribble(
+  ~coworker,  ~shape1, ~shape2,
+  "Kimya",    1,       2,
+  "Fernando", 0.5,     1,
+  "Ciara",    3,       10,
+  "Taylor",   2,       0.1
+)
+
+densities <- worker_priors %>% 
+  mutate(range_x = list(seq(0.01, 0.99, length.out = 100))) %>% 
+  mutate(density = pmap(list(range_x, shape1, shape2), ~{
+    dbeta(..1, ..2, ..3)
+  })) %>% 
+  unnest(c(range_x, density))
+
+ggplot(densities, aes(x = range_x, y = density, color = coworker)) +
+  geom_line() +
+  facet_wrap(vars(coworker))
+
+ggplot(densities, aes(x = range_x, y = density, fill = coworker)) +
+  geom_area(position = position_identity(), alpha = 0.5)
+```
+
+
+
+

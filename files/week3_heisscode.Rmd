@@ -1,0 +1,39 @@
+---
+title: "Week 3 heisscode"
+output: html_document
+date: "2022-09-19"
+---
+
+```{r message=FALSE, warning=FALSE}
+library(bayesrules)
+library(tidyverse)
+library(broom)
+library(brms)
+library(tidybayes)
+library(ggdist)
+library(patchwork)
+
+# Plot stuff
+clrs <- MetBrewer::met.brewer("Lakota", 6)
+theme_set(theme_bw())
+
+# Seed stuff
+BAYES_SEED <- 1234
+set.seed(1234)
+
+# Data
+data(Howell1, package = "rethinking")
+
+d <- Howell1 %>% 
+  filter(age > 18) %>% 
+  mutate(height_z = scale(height))
+
+height_scale <- attributes(d$height_z) %>% 
+  set_names(janitor::make_clean_names(names(.)))
+```
+
+```{r}
+
+```
+
+

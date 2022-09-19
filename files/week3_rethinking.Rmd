@@ -9,6 +9,7 @@ output: html_document
 library(bayesrules)
 library(tidyverse)
 library(rethinking)
+library(brms)
 ```
 
 ```{r}
@@ -241,6 +242,101 @@ head(d_grid)
 ```
 
 
+```{r}
+set.seed(4)
+
+d_grid_samples <- 
+  d_grid %>% 
+  sample_n(size = 1e4, replace = T, weight = probability)
+# using sample_n not rnorm, because we already have the prob? and we don't know if the posterior is normal distribution?
+d_grid_samples %>% 
+  ggplot(aes(x = mu, y = sigma)) + 
+  geom_point(size = .9, alpha = 1/15) +
+  scale_fill_viridis_c() +
+  labs(x = expression(mu[samples]),
+       y = expression(sigma[samples])) +
+  theme(panel.grid = element_blank())
+```
+
+The `quap` simulation using the rethinking package
+
+```{r}
+# R code 4.27
+flist <- alist(  height ~ dnorm( mu, sigma),  
+                      mu ~ dnorm( 178, 20),  
+                      sigma ~ dunif( 0, 50)  ) 
+```
+
+
+```{r}
+m4.1 <- quap(flist, data = d2)
+```
+
+
+```{r}
+precis(m4.1)
+```
+
+
+
+The `quap` simulation translated to brms
+
+```{r}
+b4.1 <- 
+  brm(data = d2, 
+      family = gaussian,
+      height ~ 1,
+      prior = c(prior(normal(178, 20), class = Intercept),
+                prior(uniform(0, 50), class = sigma)),
+      iter = 31000, warmup = 30000, chains = 4, cores = 4,
+      seed = 4)
+```
+
+https://bookdown.org/content/4857/geocentric-models.html#finding-the-posterior-distribution-with-quap-brm.
+
+### 4.4 linear prediction 
+
+model notation on p93
+
+choose priors conditional on the observed sample is like p hacking. 
+
+```{r}
+#R code 4.42
+xbar <- mean(d2$weight)
+
+m4.3 <- quap(  alist(  height ~ dnorm( mu, sigma),  
+                       mu <- a + b*( weight - xbar),  
+                       a ~ dnorm( 178, 20),  b ~ 
+                       dlnorm( 0, 1),  
+                       sigma ~ dunif( 0, 50)  ), 
+                       data=d2)   
+```
+
+```{r}
+round(vcov(m4.3), 3)
+```
+
+
+```{r}
+# R code4.46 
+plot( height ~ weight, data=d2, col=rangi2) 
+post <- extract.samples( m4.3)  
+a_map <- mean(post$a)  
+b_map <- mean(post$b)  
+curve( a_map + b_map*(x - xbar), add=TRUE)  
+```
+
+
+
+```{r}
+head(post)
+```
+
+
+### 4.5 curves
+
+Read through the B-Splines thing fairly quickly and thinking I am not going to use that in that work. 
+
 
 ## Question list 
 
@@ -248,10 +344,11 @@ head(d_grid)
 
 2. We start to get into joint probability this week. Is that in statistical analysis of empirical models, almost always you work with joint probability, because there are multiple variables, at least x and y?
 
+3. Simulate the prior predictive distribution: is it a common protocol to follow before fitting the models?
 
+4. what is the var-cov matrix derived by `vcov` used for?
 
+5. Joint probability of alpha and beta, a pair? But map the mean on Page 100 ? Or because it's OLS, the pair happens to the mean. 
 
-
-
-
+6. I think the author talks about mean and highest relative implausibilities interchangeably, especially in Code 4.46, but that is only true to linear regression right?
 

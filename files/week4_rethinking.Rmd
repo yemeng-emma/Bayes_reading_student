@@ -1,0 +1,56 @@
+---
+title: "Week4_rethinking"
+author: "Meng Ye"
+date: "2022-09-19"
+output: html_document
+---
+
+```{r load packages, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(rethinking)
+```
+
+
+# Chapter 5 spurious waffle 
+
+That is pivoting from simple linear regeression to multiple regression 
+
+## Intro
+
+Reasons for multiple regressions 
+
+1) control for confounders 
+
+2) complex causal mechanisms - multiple causes works simultaneously 
+
+3) Interaction
+
+Also, causal inference, DAG, over-controlling bias, e.g. collider bias 
+
+## 5.1 Spurious Association 
+
+
+# Draft discussion agenda for Thursday 
+
+1. Basic concepts/elements in Bayesian linear regression, $\mu_i$, comparing to OLS. Beta is the same variable? The output from `brm()` is also the mean or the MAP? 
+
+https://andrewheiss.slack.com/archives/D02CATRD4JZ/p1662742163766179
+
+
+2. Understanding the underlying mechanisms for Bayesian linear regression posterior calculation (based on content in previous weeks), the simulation example
+
+https://andrewheiss.slack.com/archives/D02CATRD4JZ/p1663045563153539
+
+3. Compare the purposes and functions of different steps in Bayesian model fitting
+   a. simulate the prior predictive distribution p95 
+   b. fitting model, either `quap()` or `brm()`
+   c. presenting model outputs: 
+    `rethinking::precis()` - tables of "marginal distribution"?     `rethinking::vcov()` var-cov matrics for the parameters, what for? 
+    plotting regression intervals and contours, the average regression line? How about the MAP of the joint probability distribution of $\alpha$ and $\beta$
+    what outputs does `brm()` gives? read one ouput example togeter
+    
+  https://andrewheiss.slack.com/archives/D02CATRD4JZ/p1663601103979599
+  
+
+4. `brm()` syntax details: the options of "cores", "chains" ... 
+
