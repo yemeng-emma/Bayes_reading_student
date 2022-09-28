@@ -9,6 +9,7 @@ output: html_document
 library(bayesrules)
 library(tidyverse)
 library(janitor)
+library(patchwork)
 ```
 
 # Bayes Rules Chapter 2
@@ -678,13 +679,72 @@ ggplot() +
 ```
 
 
-- This is a simulated way that *DID NOT* work. Give more thought, I think the simulated data is in essense discrete, and it is impossible to calculate the probability at a particular value of "pi". So it does not work? 
+- This is a simulated way that *DID NOT* work. Give more thought, I think the simulated data is in essence discrete, and it is impossible to calculate the probability at a particular value of "pi". So it does not work? 
 
 
 
 ```{r}
 # model for Person 1
 set.seed(5431)
+
+pop_area1 <- tibble(prior = rbeta (1000, shape1 = 8, shape2 = 2)) %>% 
+  mutate(likelihood = choose(50, 12) * prior^12 * (1-prior)^(50-12)) %>% 
+# applying Equation 3.12, omitting the Gamma function as some constant that can be normalized later
+# BUT SEEM TO BE WRONG - the y value of a continuous pdf is not the probability!  
+  mutate(unnormalized = prior^(8-1) * (1 - prior)^(2-1) * likelihood) %>% 
+  mutate(normalizing_constant = sum(unnormalized)) %>% 
+  mutate(posterior = unnormalized / normalizing_constant)
+
+
+ggplot(pop_area1, aes(x = posterior)) +
+  geom_density()
+
+```
+
+
+Update 9.26.2022, so the likelihood function is built-in in R, with the `dbinom()` function. The problem of using `rbeta()` is it is the sampling from the prior distribution, not like extracting the pi_value and their pdf respectively. 
+
+
+```{r}
+# grid approximation in Chapter 6
+grid_data <- tibble(pi_grid = seq(from = 0, to = 1, length = 1000)) %>% 
+  
+  mutate(prior = dbeta(pi_grid, 8, 2),
+         likelihood = dbinom(12, 50, pi_grid)) %>% 
+  mutate(unnormalized = likelihood * prior,
+         post = unnormalized / sum(unnormalized))
+
+post_sample <- sample_n(grid_data, size = 10000,
+                        weight = post, replace = TRUE)
+
+sim_post <- ggplot(post_sample, aes(x = pi_grid)) +
+  geom_density(color = "navy blue") +
+  coord_cartesian(xlim = c(0, 1)) +
+  labs(title = "sim post") +
+  theme_bw()
+```
+
+```{r fig.height=8, fig.width=6}
+# for person 1
+math_post <- ggplot() +
+  geom_function(fun = ~dbeta(.x, shape1 = 8 + 12, shape2 = 2 + 50 - 12), color = "red") +
+  coord_cartesian(xlim = c(0, 1)) +
+  labs(title = "math post") +
+  theme_bw()
+  
+sim_post/
+math_post
+  
+
+```
+```{r}
+
+```
+
+
+```{r}
+# model for Person 1
+set.seed(1234)
 
 pop_area1 <- tibble(prior = rbeta (1000, shape1 = 8, shape2 = 2)) %>% 
   mutate(likelihood = choose(50, 12) * prior^12 * (1-prior)^(50-12)) %>% 

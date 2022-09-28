@@ -1,0 +1,222 @@
+---
+title: "week4_meeting"
+output: html_document
+date: "2022-09-22"
+---
+
+
+
+```{r packages-data, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(brms)
+library(tidybayes)
+library(palmerpenguins)
+
+penguins <- penguins %>% 
+  drop_na(sex) %>% 
+  mutate(flipper_length_mm_z = scale(flipper_length_mm))
+
+flipper_scale <- attributes(penguins$flipper_length_mm_z) %>% 
+  set_names(janitor::make_clean_names(names(.)))
+
+set.seed(1234)
+
+theme_set(theme_bw())
+```
+
+
+
+## 1: Question/goal/estimand
+
+What is the relationship between penguin weight and penguin flipper length?
+
+```{r}
+ggplot(penguins, aes(x = flipper_length_mm, y = body_mass_g)) +
+  geom_point()
+```
+
+
+## 2: Scientific model
+Flipper length influences weight—as flippers get longer, penguins get bigger, so we have a simple DAG like this:
+
+$$
+\text{Flipper length} \rightarrow \text{Weight}
+$$
+
+We can model this by saying that penguin weight has some sort of distribution with a mean and variance. We'll pretend it's normal (it probably is too). The mean ($\mu$) of that distribution is determined in part by flipper length, and there's a linear relationship between average weight and flipper length, like this:
+
+$$
+\begin{aligned}
+\text{Weight}_i &\sim \mathcal{N}(\mu_i, \sigma) \\
+\mu_i &= \alpha + \beta\ \text{Flipper}_i
+\end{aligned}
+$$
+
+Or with more general notation:
+
+$$
+\begin{aligned}
+y_i &\sim \mathcal{N}(\mu_i, \sigma) \\
+\mu_i &= \alpha + \beta x_i
+\end{aligned}
+$$
+
+## 3: Statistical model
+
+### Simulate and check the priors
+
+We need to figure out $\alpha$, $\beta$, and $\sigma$, but we don't know them
+
+$$
+\begin{aligned}
+y_i &\sim \mathcal{N}(\mu_i, \sigma) \\
+\mu_i &= \alpha + \beta x_i \\
+\\
+\alpha &\sim \mathcal{N}(4500, 1000) \\
+\beta &\sim \mathcal{N}(300, 50) \\
+\sigma &\sim \operatorname{Exponential}(1)
+\end{aligned}
+$$
+
+```{r}
+get_prior(
+  bf(body_mass_g ~ 1 + flipper_length_mm_z),
+  data = penguins,
+  family = gaussian()
+)
+
+priors <- c(prior(normal(4500, 750), class = Intercept),
+            prior(normal(30, 50), class = b),
+            prior(exponential(1), class = sigma))
+```
+
+
+```{r}
+priors %>% 
+  parse_dist() %>% 
+  ggplot(aes(y = 0, dist = .dist, args = .args, fill = prior)) +
+  stat_slab() +
+  facet_wrap(vars(prior), scales = "free")
+```
+
+
+```{r}
+ggplot() +
+  stat_function(fun = ~dnorm(., 4500, 1000), geom = "area") +
+  xlim(c(1000, 8000))
+
+```
+
+
+```{r results="hide"}
+flipper_prior_only <- brm(
+  bf(body_mass_g ~ 1 + flipper_length_mm_z),
+  data = penguins,
+  family = gaussian(),
+  prior = priors,
+  sample_prior = "only",
+  backend = "cmdstanr"
+)
+```
+
+
+
+```{r}
+draws_prior <- tibble(flipper_length_mm_z = seq((170 - flipper_scale$scaled_center) / flipper_scale$scaled_scale, 
+                                                (240 - flipper_scale$scaled_center) / flipper_scale$scaled_scale, 
+                                                length.out = 100)) %>% 
+  add_epred_draws(flipper_prior_only, ndraws = 100) %>% 
+  mutate(flipper_unscaled = (flipper_length_mm_z * flipper_scale$scaled_scale) + flipper_scale$scaled_center)
+draws_prior %>% 
+  ggplot(aes(x = flipper_unscaled, y = .epred)) +
+  geom_line(aes(group = .draw), alpha = 0.2) +
+  coord_cartesian(xlim = c(170, 240), ylim = c(2500, 6000))
+```
+
+
+### Fit the actual model
+```{r results="hide"}
+flipper_model <- brm(
+  bf(body_mass_g ~ 1 + flipper_length_mm_z),
+  data = penguins,
+  family = gaussian(),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+```
+
+
+```{r}
+flipper_model  # Means
+print(flipper_model, robust = TRUE)  # Medians
+```
+
+
+## 4: Validate model
+```{r}
+pp_check(flipper_model)
+```
+
+
+## 5: Analyze data
+```{r}
+#get_variables(flipper_model)
+flipper_model %>% 
+  gather_draws(b_Intercept, b_flipper_length_mm_z, sigma) %>% 
+  ggplot(aes(x = .value, y = fct_rev(.variable))) +
+  stat_halfeye()
+```
+
+
+```{r}
+flipper_model %>% 
+  gather_draws(b_Intercept, b_flipper_length_mm_z, sigma) %>% 
+  ggplot(aes(x = .value)) +
+  stat_halfeye() +
+  facet_wrap(vars(.variable), scales = "free")
+```
+
+
+```{r}
+draws_posterior_epred <- tibble(flipper_length_mm_z = seq(min(penguins$flipper_length_mm_z), 
+                                                          max(penguins$flipper_length_mm_z), 
+                                                          length.out = 100)) %>% 
+  add_epred_draws(flipper_model, ndraws = 50) %>% 
+  mutate(flipper_unscaled = (flipper_length_mm_z * flipper_scale$scaled_scale) + flipper_scale$scaled_center)
+ggplot() +
+  geom_point(data = penguins, aes(x = flipper_length_mm, y = body_mass_g), alpha = 0.5, size = 1) +
+  geom_line(data = draws_posterior_epred,
+            aes(x = flipper_unscaled, y = .epred, group = .draw), alpha = 0.2)
+```
+
+
+
+```{r}
+draws_posterior_pred <- tibble(flipper_length_mm_z = seq(min(penguins$flipper_length_mm_z), 
+                                                         max(penguins$flipper_length_mm_z), 
+                                                         length.out = 500)) %>% 
+  add_predicted_draws(flipper_model, ndraws = 100) %>%
+  mutate(flipper_unscaled = (flipper_length_mm_z * flipper_scale$scaled_scale) + flipper_scale$scaled_center)
+ggplot() +
+  geom_point(data = penguins, aes(x = flipper_length_mm, y = body_mass_g), alpha = 0.5, size = 1) +
+  stat_lineribbon(data = draws_posterior_pred,
+                  aes(x = flipper_unscaled, y = .prediction), .width = 0.89, alpha = 0.2)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

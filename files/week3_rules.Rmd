@@ -244,13 +244,55 @@ PMF
 f(y_i|\lambda) = \frac{\lambda^y e^{-\lambda}}{y!} \; for \; y\in \{ 0, 1, 2, ...\}\\
 E(Y|\lambda = Var(Y|\lambda) = \lambda)
 $$
+$$
+\begin{equation}
+E(Y|\lambda) = \text{Var}(Y|\lambda) = \lambda  .
+\tag{5.4}
+\end{equation}
+$$
+
 Joint PMF for the collective or joint information 
+
+For a sample of n days of the underlying $\lambda$, the joint PMF is
+
+$$
+\begin{equation}
+f(\vec{y} | \lambda) = \prod_{i=1}^n f(y_i | \lambda) = f(y_1 | \lambda) \cdot f(y_2 | \lambda) \cdot \cdots \cdot f(y_n | \lambda)  .
+\tag{5.5}
+\end{equation}
+$$
 
 $$
 f(\vec y |\lambda) = {\prod\limits^n_{i=1}} f(y_i|\lambda)\\
 
  = \frac{\lambda \Sigma y_ie^{-n\lambda}}{\prod^n_{i=1} y_i!}
 $$
+Specifically: 
+
+$$
+\begin{equation}
+f(\vec{y} | \lambda) = \prod_{i=1}^{n}f(y_i | \lambda) = \prod_{i=1}^{n}\frac{\lambda^{y_i}e^{-\lambda}}{y_i!}  .
+\tag{5.6}
+\end{equation}
+$$
+
+
+$$
+\begin{split}
+f(\vec{y} | \lambda) 
+& = \frac{\lambda^{y_1}e^{-\lambda}}{y_1!} \cdot \frac{\lambda^{y_2}e^{-\lambda}}{y_2!} \cdots \frac{\lambda^{y_n}e^{-\lambda}}{y_n!} \\
+& = \frac{\left[\lambda^{y_1}\lambda^{y_2} \cdots \lambda^{y_n}\right] \left[e^{-\lambda}e^{-\lambda} \cdots e^{-\lambda}\right]}{y_1! y_2! \cdots y_n!} \\
+& =\frac{\lambda^{\sum y_i}e^{-n\lambda}}{\prod_{i=1}^n y_i!} \\
+\end{split}
+$$
+
+$$
+\begin{equation}
+L(\lambda | \vec{y}) = \frac{\lambda^{\sum y_i}e^{-n\lambda}}{\prod_{i=1}^n y_i!} \propto \lambda^{\sum y_i}e^{-n\lambda} \;\; \text{ for } \lambda > 0.
+\tag{5.6}
+\end{equation}
+$$
+
 
 - Tuning priors
 
@@ -264,6 +306,28 @@ plot_poisson_likelihood(y = c(6, 2, 2, 1), lambda_upper_bound = 10)
 ```{r}
 plot_gamma_poisson(shape = 10, rate = 2, sum_y = 11, n = 4)
 ```
+$$
+\begin{equation}
+\lambda \sim \text{Gamma}(s, r) \\
+\end{equation}
+$$
+$$
+\begin{equation}
+f(\lambda) = \frac{r^s}{\Gamma(s)} \lambda^{s-1} e^{-r\lambda} \;\; \text{ for } \lambda > 0.
+\tag{5.8}
+\end{equation}
+$$
+
+$$
+\begin{equation}
+\begin{split}
+E(\lambda) & = \frac{s}{r} \\
+\text{Mode}(\lambda) & = \frac{s - 1}{r} \;\; \text{ for } s \ge 1 \\
+\text{Var}(\lambda) & = \frac{s}{r^2} \\
+\end{split}
+\tag{5.9}
+\end{equation}
+$$
 
 
 

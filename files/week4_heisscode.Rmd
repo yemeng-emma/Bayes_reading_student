@@ -1,0 +1,95 @@
+---
+title: "week4_heisscode"
+author: "Meng Ye"
+date: "2022-09-22"
+output: html_document
+---
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(brms)
+library(tidybayes)
+library(ggdag)
+library(ggrepel)
+library(patchwork)
+
+# Plot stuff
+clrs <- MetBrewer::met.brewer("Lakota", 6)
+theme_set(theme_bw())
+
+# Seed stuff
+BAYES_SEED <- 1234
+set.seed(1234)
+```
+
+- Situations where you need controls 
+
+$$
+X \leftarrow Z \rightarrow Y
+$$
+This assumes 
+
+$$
+Y \not\!\perp\!\!\!\perp X
+$$
+
+```{r}
+n <- 1000
+
+fork_sim <- tibble(Z = rbinom(n, 1, prob = 0.5)) %>% 
+  # When Z is 0, there's a 10% chance of X or Y being 1
+  # When Z is 1, there's a 90% chance of X or Y being 1
+  mutate(X = rbinom(n, 1, prob = ((1 - Z) * 0.1) + (Z * 0.9)),
+         Y = rbinom(n, 1, prob = ((1 - Z) * 0.1) + (Z * 0.9)))
+
+fork_sim %>% 
+  select(-Z) %>% 
+  table()
+```
+
+
+```{r}
+fork_sim %>% 
+  summarize(cor = cor(X, Y))
+
+```
+
+```{r}
+fork_sim %>% 
+  group_by(Z) %>% 
+  summarize(cor = cor(X, Y))
+```
+
+```{r}
+n <- 300
+
+fork_sim_cont <- tibble(Z = rbinom(n, 1, 0.5)) %>% 
+  mutate(mean_o_Z <- 2*Z -1,
+         X = rnorm(n, mean_o_Z),
+         Y = rnorm(n, mean_o_Z))
+
+ggplot(fork_sim_cont, aes(x = X, y = Y, color = factor(Z))) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  geom_smooth(aes(color = NULL), method = "lm")
+```
+
+
+```{r}
+n <- 300
+
+fork_sim_rethinking <- tibble(X = rnorm(n, 0, 1)) %>% 
+  mutate(Z = rbinom(n, 1, plogis(X))) %>% 
+  mutate(Y = rnorm(n, 2*Z -1))
+
+fork_sim_rethinking %>% 
+  mutate(p = plogis(X)) %>% 
+  summarise(mean_p = mean(p))
+
+```
+
+
+
+
+
+

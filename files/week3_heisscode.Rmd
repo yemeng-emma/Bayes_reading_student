@@ -27,13 +27,129 @@ data(Howell1, package = "rethinking")
 d <- Howell1 %>% 
   filter(age > 18) %>% 
   mutate(height_z = scale(height))
-
+# what is that?
 height_scale <- attributes(d$height_z) %>% 
   set_names(janitor::make_clean_names(names(.)))
 ```
 
-```{r}
+ps. why scale not just center it? 
 
+Simulating prior distribution 
+```{r}
+n_samples <- 10
+
+tibble(alpha = rnorm(n_samples, 0, 1),
+       beta = rnorm(n_samples, 0, 1)) %>% 
+  ggplot() +
+  geom_abline(aes(slope = beta, intercept = alpha)) +
+  xlim(c(-2, 2)) + ylim(c(-2, 2))
 ```
+
+
+```{r}
+n <- 100
+Hbar <- 150
+Hseq <- seq(130, 170, length.out = 30)
+
+tibble(alpha = rnorm(n, 60, 10),
+       beta = rnorm(n, 0, 10)) %>% 
+  mutate(weight = map2(alpha, beta, ~.x + .y*(Hseq - Hbar)),
+         height = list(Hseq),
+         id = 1:n) %>% 
+  unnest(c(weight, height)) %>% 
+  ggplot(aes(x = height, y = weight)) + 
+  geom_line(aes(group = id), alpha = 0.2) +
+  coord_cartesian(xlim = c(130, 170), ylim = c(10, 100))
+```
+
+```{r}
+ggplot() +
+  stat_function(fun = ~dlnorm(., 0, 1), geom = "area", fill = clrs[1]) +
+  xlim(c(0, 5)) +
+  labs(x = "Simulated β values", y = "Density")
+```
+
+
+```{r}
+n <- 100
+Hbar <- 150
+Hseq <- seq(130, 170, length.out = 30)
+
+tibble(alpha = rnorm(n, 60, 10),
+       beta = rlnorm(n, 0, 1)) %>% 
+  mutate(weight = map2(alpha, beta, ~.x + .y*(Hseq - Hbar)),
+         height = list(Hseq),
+         id = 1:n) %>% 
+  unnest(c(weight, height)) %>% 
+  ggplot(aes(x = height, y = weight)) + 
+  geom_line(aes(group = id), alpha = 0.2) +
+  coord_cartesian(xlim = c(130, 170), ylim = c(10, 100))
+```
+
+
+```{r}
+priors <- c(prior(normal(60, 10), class = Intercept),
+            prior(lognormal(0, 1), class = b, lb = 0),
+            prior(uniform(0, 10), class = sigma, lb = 0, ub = 10))
+
+height_weight_lognormal <- brm(
+  bf(weight ~ 1 + height_z),
+  data = d,
+  family = gaussian(),
+  prior = priors,
+  chains = 4, cores = 4, seed = BAYES_SEED
+)
+```
+
+```{r}
+print(height_weight_lognormal)
+```
+
+Expectation of the posterior (plotting uncertainty of the mean):
+
+
+```{r}
+draws_posterior_epred <- tibble(height_z = seq(min(d$height_z), max(d$height_z), length.out = 100)) %>% 
+  add_epred_draws(height_weight_lognormal, ndraws = 50) %>% 
+  mutate(height_unscaled = (height_z * height_scale$scaled_scale) + height_scale$scaled_center)
+
+ggplot() +
+  geom_point(data = d, aes(x = height, y = weight), alpha = 0.5, size = 1) +
+  geom_line(data = draws_posterior_epred,
+            aes(x = height_unscaled, y = .epred, group = .draw), alpha = 0.2, color = clrs[6]) +
+  coord_cartesian(ylim = c(30, 65))
+```
+
+Posterior predictions (plotting uncertainty of the predictions):
+
+
+
+```{r}
+draws_posterior_pred <- tibble(height_z = seq(min(d$height_z), max(d$height_z), length.out = 500)) %>% 
+#this is the prediction
+  add_predicted_draws(height_weight_lognormal, ndraws = 100) %>%
+  # the simulation of height_z and prediction are independent of each other?
+  
+  mutate(height_unscaled = (height_z * height_scale$scaled_scale) + height_scale$scaled_center)
+
+ggplot() +
+  geom_point(data = d, aes(x = height, y = weight), alpha = 0.5, size = 1) +
+  stat_lineribbon(data = draws_posterior_pred,
+                  aes(x = height_unscaled, y = .prediction), .width = 0.95, 
+                  alpha = 0.2, color = clrs[5], fill = clrs[5]) +
+  coord_cartesian(ylim = c(30, 65))
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
 

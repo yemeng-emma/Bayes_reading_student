@@ -1,0 +1,117 @@
+---
+title: "week5_rethinking"
+author: "Meng Ye"
+date: "2022-09-24"
+output: html_document
+---
+
+# Chapter 9 MCMC
+
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(rethinking)
+library(brms)
+library(tidybayes)
+library(ggpomological)
+set.seed(1234)
+pomological_palette <- ggpomological:::pomological_palette
+
+```
+
+
+## 9.1 Good King Markov and his island kingdom
+
+MCMC: the algorithm ensures that *in the long run*, the computer will visit each parameter value in proportion to its posterior probability 
+
+But computationally, you only need to compute the posterior probability for any specific combination of the parameter values one at a time
+
+So you don't have to evaluate the ***entire*** grid. Just two spots, "current and proposal", and only need to decide if you need to move
+
+"Island" is only one parameter but the MCMC scales up to multiple dimensions
+
+"Chain" : sequence of draws from distribution
+
+"Markov chain": History doesn't matter, just where you are now
+
+
+```{r}
+# simulating the Markov king
+num_weeks <- 1e5
+positions <- rep(0, num_weeks) 
+current   <- 10
+
+for (i in 1:num_weeks) {
+  
+  # record current position 
+  positions[i] <- current
+  # flip coin to generate proposal
+  proposal <- current + sample(c(-1, 1), size = 1)
+  # now make sure he loops around the archipelago 
+  if (proposal < 1) proposal <- 10
+  if (proposal > 10) proposal <- 1
+  # move?
+  prob_move <- proposal/current
+  current <- ifelse(runif(1) < prob_move, proposal, current)
+  
+}  
+```
+
+Understanding the for (i in 1:num_weeks) ~ ... `unif(1)` part
+E.g. current = 5,
+if (A) prob_move = 6/5 is 100% > `unif(1)`, corresponding to the move to the next island part
+if (B) prob_move = 4/5, whether to move depends on if 4/5 >`unif(1)`. Given the CDF of `unif(1)`, cumulatively, it falls between 0 - 4/5, 4/5 of the time, 4/5 - 1, 1/5 of the time.  
+
+This corresponds to the part, "drop the number of stone (proposal) count from the shell (current) and then conduct a random draw from the rest shells and stones": 4/5 vs. 1-4/5 
+
+And if you keep the chain going on and on and on, accumulate the sum of density (the cdf) for each island -- it corresponds to its absolute (rather than relative) population ratio (probability density)
+
+
+
+Plot the simulation adpated from the tidyverse translation 
+```{r}
+tibble(week   = 1:1e5,
+       island = positions) %>%
+  ggplot(aes(x = week, y = island)) +
+  geom_point(shape = 1, color = pomological_palette[1]) +
+  scale_x_continuous(breaks = seq(from = 0, to = 100, by = 20)) +
+  scale_y_continuous(breaks = seq(from = 0, to = 10, by = 2)) +
+  coord_cartesian(xlim = c(0, 100)) +
+  labs(title = "Behold the Metropolis algorithm in action!",
+       subtitle = "The dots show the king's path over the first 100 weeks.") +
+  theme_bw()
+```
+
+```{r}
+tibble(week   = 1:1e5,
+       island = positions) %>%
+  mutate(island = factor(island)) %>%
+  
+  ggplot(aes(x = island)) +
+  geom_bar(fill = pomological_palette[2]) +
+  scale_y_continuous("number of weeks", expand = expansion(mult = c(0, 0.05))) +
+  labs(title = "Old Metropolis shines in the long run.",
+       subtitle = "Sure enough, the time the king spent on each island\nwas proportional to its population size.") +
+  theme_bw()
+```
+
+
+## 9.2  Metropolis algorithms
+
+- Gibbs sampling 
+
+Using conjugate pairs but have limitations (stuck in a small region).
+
+- High dimensional problems
+
+## 9.3  Hamiltonian Monte Carlo
+
+HMC requires continuous parameters. It can’t glide through a discrete parameter. In practice, this means that certain techniques, like the imputation of discrete missing data, have to be done differently with HMC. HMC can certainly sample from such models, often much more efficiently than a Gibbs sampler could. But you have to change how you code them. (p. 278)
+
+
+
+limitations: 
+
+
+## Questions 
+

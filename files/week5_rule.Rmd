@@ -1,0 +1,317 @@
+---
+title: "week5-rules"
+author: "Meng Ye"
+date: "2022-09-25"
+output: html_document
+---
+
+```{r message=FALSE, warning=FALSE}
+# Load packages
+library(tidyverse)
+library(janitor)
+library(rstan)
+library(bayesplot)
+```
+
+
+```{r}
+set.seed(1234)
+```
+
+
+# Chapter 6 Approximating the Posterior 
+
+## 6.1 Grid approximation 
+
+Steps
+
+1. Define a discrete grid of possible $\theta$ values
+2. Evaluate the prior ***pdf*** $f(\theta)$ and likelihood function $L(\theta|y)$ at each $\theta$ grid value
+3. Obtain the discrete approximation of the posterior pdf $f\theta|y)$, by calculating the product and then normalization 
+4. Randomly sample N $\theta$ grid values with respect their corresponding normalized posteror probs 
+
+Re-do the simulation in Week 2. See the codes in that document. It is working *now*.
+
+- Beta-binomial example
+
+```{r}
+# Step 1: Define a grid of 6 pi values
+grid_data <- data.frame(pi_grid = seq(from = 0, to = 1, length = 6))
+
+# Step 2: Evaluate the prior & likelihood at each pi
+grid_data <- grid_data %>% 
+  mutate(prior = dbeta(pi_grid, 2, 2),
+         likelihood = dbinom(9, 10, pi_grid))
+
+# Step 3: Approximate the posterior
+grid_data <- grid_data %>% 
+  mutate(unnormalized = likelihood * prior,
+         posterior = unnormalized / sum(unnormalized))
+
+# Confirm that the posterior approximation sums to 1
+grid_data %>% 
+  summarize(sum(unnormalized), sum(posterior))
+```
+
+```{r}
+round(grid_data, 2)
+
+```
+
+```{r}
+# Plot the grid approximated posterior
+ggplot(grid_data, aes(x = pi_grid, y = posterior)) + 
+  geom_point() + 
+  geom_segment(aes(x = pi_grid, xend = pi_grid, y = 0, yend = posterior))
+```
+
+```{r}
+# Step 4: sample from the discretized posterior
+post_sample <- sample_n(grid_data, size = 10000, 
+                        weight = posterior, replace = TRUE)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+# Histogram of the grid simulation with posterior pdf
+ggplot(post_sample, aes(x = pi_grid)) + 
+  geom_histogram(aes(y = ..density..), color = "white") + 
+  stat_function(fun = dbeta, args = list(11, 3)) + 
+  lims(x = c(0, 1))
+```
+
+```{r}
+# Step 1: Define a grid of 101 pi values
+grid_data  <- data.frame(pi_grid = seq(from = 0, to = 1, length = 101))
+
+# Step 2: Evaluate the prior & likelihood at each pi
+grid_data <- grid_data %>% 
+  mutate(prior = dbeta(pi_grid, 2, 2),
+         likelihood = dbinom(9, 10, pi_grid))
+
+
+# Step 3: Approximate the posterior
+grid_data <- grid_data %>% 
+  mutate(unnormalized = likelihood * prior,
+         posterior = unnormalized / sum(unnormalized))
+```
+
+```{r}
+# plotting the posterior distribution, Not sampling
+ggplot(grid_data, aes(x = pi_grid, y = posterior)) + 
+  geom_point() + 
+  geom_segment(aes(x = pi_grid, xend = pi_grid, y = 0, yend = posterior))
+```
+
+```{r}
+# Set the seed
+set.seed(84735)
+
+# Step 4: sample from the discretized posterior
+post_sample <- sample_n(grid_data, size = 10000, 
+                        weight = posterior, replace = TRUE)
+```
+
+```{r}
+ggplot(post_sample, aes(x = pi_grid)) + 
+  geom_histogram(aes(y = ..density..), color = "white", binwidth = 0.03) + 
+  stat_function(fun = dbeta, args = list(11, 3)) + 
+  lims(x = c(0, 1))
+```
+
+- Gamma-Poisson example
+
+
+- Limitations:
+Bad in handling multi-dimensional data. 
+More dimensions - more fine grids need -> computationally expensive
+
+```{r}
+# Step 1: Define a grid of 501 lambda values
+grid_GP   <- data.frame(lambda_grid = seq(from = 0, to = 15, length = 501)) %>% 
+
+# Step 2: Evaluate the prior & likelihood at each lambda
+
+  mutate(prior = dgamma(lambda_grid, 3, 1),
+         likelihood = dpois(2, lambda_grid) * dpois(8, lambda_grid)) %>% 
+
+# Step 3: Approximate the posterior
+ 
+  mutate(unnormalized = likelihood * prior,
+         posterior = unnormalized / sum(unnormalized))
+
+# Step 4: sample from the discretized posterior
+post_GP_sample <- sample_n(grid_data, size = 10000, 
+                        weight = posterior, replace = TRUE)
+```
+
+```{r}
+# Histogram of the grid simulation with posterior pdf 
+ggplot(post_GP_sample, aes(x = lambda_grid)) + 
+  geom_histogram(aes(y = ..density..), color = "white", binwidth = 0.3) + 
+  stat_function(fun = dgamma, args = list(13, 3)) + 
+  lims(x = c(0, 15))
+```
+
+
+## 6.2 Markov chains via stan 
+
+
+
+- MCMC features
+
+As in Rethinking:
+ 1. Good at complex simulations 
+ 2. Chain - each subsequent sample depends on the previous value
+ 3. Math version to say Markov kings next trip 
+ 
+ 
+$$
+f \left ( \theta^{(i + 1)} \;| \; \theta^{(1)}, \theta^{(2)}, \ldots, \theta^{(i)}, y\right) = f\left(\theta^{(i + 1)} \; | \; \theta^{(i)}, y\right)
+$$
+ 4. local is not universal, the pdf from which a Markov chain value is simulated is not equivalent to the posterior pdf 
+ 
+$$
+f\left(\theta^{(i + 1)} \; | \; \theta^{(i)}, y\right) \ne f\left(\theta^{(i + 1)} \; | \; y\right)
+$$
+
+This also corresponds to Markov king's example in terms of 
+
+"Islands" are parameter values: the chain walk along $\theta$ values 
+
+- MCMC with B-B example
+
+ 1. Step 1: define `data`, `parameters` and `model`
+ 2. Step 2: simulate the posterior
+
+First copy and paste Dr. Heiss sample for writing `cmdstanr` codes in Rmd chunks, INTERACTIVELY
+
+```{r message=FALSE, warning=FALSE}
+library(cmdstanr)
+register_knitr_engine(override = FALSE)
+```
+
+
+```{stan output.var="model_in_chunk_cmdstanr", engine="cmdstan"}
+data {
+  int<lower = 0, upper = 10> Y;
+}
+parameters {
+  real<lower = 0, upper = 1> pi;
+}
+model {
+  Y ~ binomial(10, pi);
+  pi ~ beta(2, 2);
+}
+```
+
+```{r}
+bb_sim_samples <- model_in_chunk_cmdstanr$sample(
+  data = list(Y = 9), 
+  parallel_chains = 4, iter_warmup = 2500, iter_sampling = 2500, seed = 84735
+)
+
+bb_sim_samples
+```
+
+
+
+
+
+```{r fig.height=3, fig.width=7}
+mcmc_trace(bb_sim_samples$draws("pi"), size = 0.1)
+
+```
+
+```{r}
+# Histogram of the Markov chain values
+mcmc_hist(bb_sim_samples$draws("pi")) +
+  yaxis_text(TRUE)+
+  ylab("count")
+
+```
+
+```{r}
+# Histogram of the Markov chain values
+mcmc_dens(bb_sim_samples$draws("pi")) +
+  yaxis_text(TRUE)+
+  ylab("density")
+
+```
+
+
+- MCMC with G-P example
+
+ 1. Step 1: define `data`, `parameters` and `model`
+ 2. Step 2: simulate the posterior
+ 
+ Data `Y[2]` represents the vector of event counts,$(Y_1,Y_2)$,  where the counts can be any non-negative integers in $\{0,1,2,\ldots\}$
+
+ 
+```{stan output.var="gp_model", engine="cmdstan"}
+data {
+  array[2] int<lower = 0> Y;
+}
+parameters {
+  real<lower = 0> lambda;
+}
+model {
+  Y ~ poisson(lambda);
+  lambda ~ gamma(3, 1);
+}
+```
+```{r}
+gp_sim_samples <- gp_model$sample(
+  data = list(Y = c(2, 8)), 
+  parallel_chains = 4, iter_warmup = 2500, iter_sampling = 2500, seed = 84735
+)
+
+gp_sim_samples
+```
+ 
+```{r fig.height=3, fig.width=7}
+mcmc_trace(gp_sim_samples$draws("lambda"), size = 0.1)
+
+```
+
+```{r}
+mcmc_dens_overlay(gp_sim_samples$draws("lambda")) +
+  ylab("density") +
+  theme_bw()
+```
+
+
+## 6.3 Markov chain diagnostics
+
+- plotting diagnostics
+  **trace plots** and **parallel chains**
+- numerical diagnostics 
+  **effective sample size**, **autocorrelation**, **R-hat**($\hat{R}$)
+  
+$$
+\text{R-hat} \approx \sqrt{\frac{\text{Var}_\text{combined}}{\text{Var}_\text{within}}}  .
+
+$$
+
+# Chapter 7 MCMC under the Hood 
+
+## 7.1 The big data 
+
+## 7.2 The Metropolis-Hastings algorithm 
+
+## 7.3 Implementing the Metropolis-Hastings
+
+## 
+
+## 
+
+# Chapter 8 Posterior Inference & Prediction 
+
+All comes together and how we use it specifically 
+
+## 8.1 Posterior estimation 
+
+## 8.2 Posterior hypothesis testing 
+
+## 8.3 Posterior prediction 
+

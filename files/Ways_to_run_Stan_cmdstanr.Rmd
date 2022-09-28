@@ -1,0 +1,115 @@
+---
+title: "Ways to run Stan code, cmdstanr version"
+date: "2022-09-22"
+output: html_document
+---
+
+
+```{r}
+library(cmdstanr)
+
+# Make it so Stan chunks in Rmd files use cmdstanr instead of rstan
+# This works when knitting, but not when running RStudio interactively
+# register_knitr_engine()
+
+# See ?register_knitr_engine for more on how to make it work interactively
+#
+# For interactive work, we can use override = FALSE and then specify engine =
+# "cmdstan" in the stan chunk options
+register_knitr_engine(override = FALSE)
+```
+
+## Option 1: Stan code as string
+
+In order to pass string-based models to cmdstanr, you have to save the string as a file
+
+```{r results="hide"}
+bb_model <- "
+  data {
+    int<lower = 0, upper = 10> Y;
+  }
+  parameters {
+    real<lower = 0, upper = 1> pi;
+  }
+  model {
+    Y ~ binomial(10, pi);
+    pi ~ beta(2, 2);
+  }
+"
+
+# Write the string to a temporary file
+temp_stan_file <- write_stan_file(bb_model)
+
+# Compile the model from the temporary file
+bb_sim_model_text <- cmdstan_model(temp_stan_file)
+
+bb_sim_samples <- bb_sim_model_text$sample(
+  data = list(Y = 9), 
+  parallel_chains = 4, iter_warmup = 2500, iter_sampling = 2500, seed = 84735
+)
+
+bb_sim_samples
+```
+
+## Option 2: Stan code as file
+
+```{r results="hide"}
+bb_model_file <- cmdstan_model("stan_example.stan")
+
+bb_sim_samples <- bb_model_file$sample(
+  data = list(Y = 9), 
+  parallel_chains = 4, iter_warmup = 2500, iter_sampling = 2500, seed = 84735
+)
+
+bb_sim_samples
+```
+
+## Option 3: Stan code as chunk
+
+```{stan output.var="model_in_chunk_cmdstanr", engine="cmdstan"}
+data {
+  int<lower = 0, upper = 10> Y;
+}
+parameters {
+  real<lower = 0, upper = 1> pi;
+}
+model {
+  Y ~ binomial(10, pi);
+  pi ~ beta(2, 2);
+}
+```
+
+Verify that the compiled thing is a cmdstan model and not an rstan `stanmodels` object:
+
+```{r}
+class(model_in_chunk_cmdstanr)
+```
+
+
+```{r}
+bb_sim_samples <- model_in_chunk_cmdstanr$sample(
+  data = list(Y = 9), 
+  parallel_chains = 4, iter_warmup = 2500, iter_sampling = 2500, seed = 84735
+)
+
+bb_sim_samples
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,68 @@
+---
+title: "Ways to run Stan code"
+date: "2022-09-22"
+output: html_document
+---
+
+
+```{r}
+library(rstan)
+```
+
+## Option 1: Stan code as string
+Store the Stan code as a character object and then reference it with the `model_code` argument in `stan()`, which will (1) compile the code with C++ and (2) run the MCMC sampling:
+
+```{r results="hide"}
+bb_model <- "
+  data {
+    int<lower = 0, upper = 10> Y;
+  }
+  parameters {
+    real<lower = 0, upper = 1> pi;
+  }
+  model {
+    Y ~ binomial(10, pi);
+    pi ~ beta(2, 2);
+  }
+"
+bb_sim <- stan(model_code = bb_model, data = list(Y = 9), 
+               chains = 4, iter = 5000*2, seed = 84735)
+bb_sim
+```
+
+
+## Option 2: Stan code as file
+Store the Stan code in a separate file on your computer (here "stan_example.stan") and then reference it with the `file` argument in `stan()`, which will (1) compile the code with C++ and (2) run the MCMC sampling:
+
+```{r results="hide"}
+bb_sim <- stan(file = "stan_example.stan", data = list(Y = 9), 
+               chains = 4, iter = 5000*2, seed = 84735)
+bb_sim
+```
+
+## Option 3: Stan code as chunk
+Put the Stan code in a chunk and specify the the `output.var` option to store the model as an object in R. Running the Stan chunk will compile it with C++. Then use `sampling()` to run the MCMC samples (note that you don't use `stan()` here, since that both compiles and samples; running the Stan chunk compiles the model, so we only need to sample)
+
+```{stan output.var="model_in_chunk"}
+data {
+  int<lower = 0, upper = 10> Y;
+}
+parameters {
+  real<lower = 0, upper = 1> pi;
+}
+model {
+  Y ~ binomial(10, pi);
+  pi ~ beta(2, 2);
+}
+```
+```{r}
+bb_sim <- sampling(object = model_in_chunk, data = list(Y = 9), 
+                   chains = 4, iter = 5000*2, seed = 84735)
+bb_sim
+```
+
+
+
+
+
+
