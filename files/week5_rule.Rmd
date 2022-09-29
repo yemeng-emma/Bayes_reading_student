@@ -269,6 +269,14 @@ gp_sim_samples <- gp_model$sample(
 gp_sim_samples
 ```
  
+```{r}
+# use the draws() function
+
+gp_sim_samples$draws(variables = "lambda")
+```
+ 
+ 
+ 
 ```{r fig.height=3, fig.width=7}
 mcmc_trace(gp_sim_samples$draws("lambda"), size = 0.1)
 
@@ -285,8 +293,19 @@ mcmc_dens_overlay(gp_sim_samples$draws("lambda")) +
 
 - plotting diagnostics
   **trace plots** and **parallel chains**
+  
 - numerical diagnostics 
-  **effective sample size**, **autocorrelation**, **R-hat**($\hat{R}$)
+
+  **effective sample size ratio**
+$$
+\frac{N_{eff}}{N}
+$$
+
+  
+  **autocorrelation**
+  
+  
+  **R-hat**($\hat{R}$)
   
 $$
 \text{R-hat} \approx \sqrt{\frac{\text{Var}_\text{combined}}{\text{Var}_\text{within}}}  .
@@ -297,9 +316,31 @@ $$
 
 ## 7.1 The big data 
 
+As tour manager, it’s your job to ensure that the density of tour stops in each μ region is proportional to its ***posterior*** plausibility.
+
+Special case of (cheating with knowing posterior distribution) is called Monte Carlo, independent draw, rather than dependent draw in MCMC
+
 ## 7.2 The Metropolis-Hastings algorithm 
 
+How does MCMC "know" the posterior probability without knowing the posterior distribution? It calculates the {prior * likelihood function} just for the two "islands", two parameter values and compare between them.  
+
+It is un-normalized because we don't know the normalizing constant (the sum), because we know just two points rather than the whole, but that doesn't stop us from knowing between $\mu$ and $\mu'$, which has a higher posterior plausibility. 
+
+The Metropolis algorithm is a special case of the Metropolis-Hastings in which the proposal model is symmetric. In such cases, the MCMC algorithm simplifies to, dropping the q(.) part.  
+
+$$
+\begin{equation}
+\alpha = \min\left\lbrace 1, \; \frac{f(\mu')L(\mu'|y) / f(y)}{f(\mu)L(\mu|y) / f(y)} \right\rbrace = \min\left\lbrace 1, \; \frac{f(\mu'|y)}{f(\mu|y)} \right\rbrace  
+\end{equation}
+$$
+
+Mathematically, we know the the *relative probability* between posterior pdf of $\mu$ and $\mu'$, when pls($\mu'$)/pls($\mu$) < 1, ("pls()" meaning "plausibility"), the chance of going to $mu'$ is 
+$\alpha$ = pls($\mu'$)/pls($\mu$), the change of staying put is $1 - \alpha$
+
+Such iteration will still preserve the relative probability between any two points in the parameter value range. E.g. in the first chain pair $\mu$ count 1 day (starting with score 1) and $\mu'$ got 4/5 day (cumulatively). So we can rebuilt the whole distribution based on all the relative probability pairs. Like for mu {1, 2, 3, 4}, the pls(.) is 1, $1 \times 4/5$, $1 \times 4/5 \times 6/7$, $1 \times 4/5 \times 6/7 \times...$
+
 ## 7.3 Implementing the Metropolis-Hastings
+
 
 ## 
 

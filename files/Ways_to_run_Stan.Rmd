@@ -55,6 +55,8 @@ model {
   pi ~ beta(2, 2);
 }
 ```
+
+
 ```{r}
 bb_sim <- sampling(object = model_in_chunk, data = list(Y = 9), 
                    chains = 4, iter = 5000*2, seed = 84735)
